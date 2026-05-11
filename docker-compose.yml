@@ -1,0 +1,16 @@
+services:
+  cpa-monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cpa-monitor
+    restart: unless-stopped
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8088
+      DB_PATH: /app/data/stats.db
+      PYTHONUNBUFFERED: "1"
+    ports:
+      - "18088:8088"
+    volumes:
+      - ./data:/app/data

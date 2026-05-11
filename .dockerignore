@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+stats.db
+data/
+.git
+.gitignore
+README.md
+start.bat

@@ -1,0 +1,2130 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CPA监控</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --bg-top: #eaf2ff;
+      --bg-orb-a: rgba(14, 165, 233, 0.12);
+      --bg-orb-b: rgba(20, 184, 166, 0.12);
+      --panel: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --line-strong: #cbd5e1;
+      --input-bg: #ffffff;
+      --input-text: #111827;
+      --pill-bg: #f8fafc;
+      --ghost-bg: #e2e8f0;
+      --ghost-text: #334155;
+      --card-shadow: 0 4px 20px rgba(2, 6, 23, 0.06);
+      --pre-bg: #0b1020;
+      --pre-text: #d1d5db;
+      --accent: #0f766e;
+      --warn: #b45309;
+      --bad: #b91c1c;
+      --good: #166534;
+      --chart-line: #e2e8f0;
+      --chart-text: #334155;
+      --chart-muted: #64748b;
+      --chart-accent: #0f766e;
+      --chart-accent-soft: #14b8a6;
+      --chart-accent-deep: #0b5f5a;
+      --chart-danger: #dc2626;
+      --chart-good: #16a34a;
+      --chart-canvas-bg: #f8fbff;
+      --chart-p1: #0f766e;
+      --chart-p2: #0284c7;
+      --chart-p3: #f59e0b;
+      --chart-p4: #ef4444;
+      --chart-p5: #10b981;
+      --chart-p6: #7c3aed;
+      --chart-p7: #f97316;
+      --chart-p8: #0891b2;
+      --chart-grid-soft: #eaf0f7;
+      --chart-bar-bg: #edf2f7;
+      --status-info: #6b7280;
+    }
+    [data-theme="dark"] {
+      --bg: #0b1220;
+      --bg-top: #0f1b33;
+      --bg-orb-a: rgba(56, 189, 248, 0.14);
+      --bg-orb-b: rgba(45, 212, 191, 0.14);
+      --panel: #0f172a;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --line: #243247;
+      --line-strong: #334155;
+      --input-bg: #111c30;
+      --input-text: #e2e8f0;
+      --pill-bg: #111c30;
+      --ghost-bg: #1d2a3f;
+      --ghost-text: #cbd5e1;
+      --card-shadow: 0 8px 26px rgba(2, 6, 23, 0.45);
+      --pre-bg: #020617;
+      --pre-text: #cbd5e1;
+      --chart-line: #334155;
+      --chart-text: #cbd5e1;
+      --chart-muted: #94a3b8;
+      --chart-accent: #14b8a6;
+      --chart-accent-soft: #2dd4bf;
+      --chart-accent-deep: #0d9488;
+      --chart-danger: #ef4444;
+      --chart-good: #22c55e;
+      --chart-canvas-bg: #0b1528;
+      --chart-p1: #14b8a6;
+      --chart-p2: #38bdf8;
+      --chart-p3: #f59e0b;
+      --chart-p4: #f87171;
+      --chart-p5: #22c55e;
+      --chart-p6: #a78bfa;
+      --chart-p7: #fb923c;
+      --chart-p8: #67e8f9;
+      --chart-grid-soft: #253347;
+      --chart-bar-bg: #1b2a3f;
+      --status-info: #94a3b8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(1200px 500px at 8% -10%, var(--bg-orb-a), transparent 62%),
+        radial-gradient(1000px 420px at 92% -16%, var(--bg-orb-b), transparent 60%),
+        linear-gradient(180deg, var(--bg-top) 0, var(--bg) 220px);
+      color: var(--text);
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+    .wrap { max-width: 1360px; margin: 22px auto 40px; padding: 0 16px; }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: var(--card-shadow);
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+    h1 { margin: 0; font-size: 22px; }
+    a { color: var(--accent); }
+    a:hover { opacity: 0.9; }
+    .small { color: var(--muted); font-size: 12px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 10px;
+      align-items: end;
+    }
+    .field { grid-column: span 12; }
+    .field.sm { grid-column: span 3; }
+    .field.md { grid-column: span 6; }
+    .field label { display: block; margin-bottom: 6px; color: var(--muted); font-size: 12px; }
+    .field input, .field select {
+      width: 100%;
+      height: 38px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      padding: 0 10px;
+      font-size: 14px;
+      background: var(--input-bg);
+      color: var(--input-text);
+    }
+    .field input::placeholder { color: var(--muted); }
+    .actions { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; }
+    button {
+      border: 0;
+      border-radius: 8px;
+      height: 36px;
+      padding: 0 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.15s ease, opacity 0.15s ease;
+    }
+    button:hover { transform: translateY(-1px); }
+    button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-ghost { background: var(--ghost-bg); color: var(--ghost-text); border: 1px solid var(--line); }
+    .status { margin-top: 8px; min-height: 18px; font-size: 13px; color: var(--muted); white-space: pre-wrap; }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      align-items: center;
+    }
+    .pill {
+      display: inline-block;
+      border: 1px solid var(--line-strong);
+      background: var(--pill-bg);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 12px;
+      margin-right: 8px;
+    }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+    .brand-pill {
+      border: 1px solid var(--line-strong);
+      border-radius: 16px;
+      padding: 10px 18px;
+      font-weight: 800;
+      letter-spacing: 1.6px;
+      text-transform: uppercase;
+      color: var(--text);
+      background: linear-gradient(180deg, var(--panel) 0%, var(--pill-bg) 100%);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    }
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .chip-group {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--pill-bg);
+      padding: 4px;
+      display: inline-flex;
+      gap: 4px;
+      align-items: center;
+    }
+    .chip-btn {
+      height: 30px;
+      border: 0;
+      border-radius: 999px;
+      padding: 0 12px;
+      font-size: 12px;
+      background: transparent;
+      color: var(--muted);
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .chip-btn.active {
+      background: var(--panel);
+      color: var(--text);
+      border: 1px solid var(--line);
+      box-shadow: var(--card-shadow);
+    }
+    .chip-link {
+      height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 0 14px;
+      background: var(--panel);
+      color: var(--text);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      font-weight: 700;
+      font-size: 12px;
+    }
+    .theme-switch {
+      margin-left: 8px;
+      height: 30px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: var(--input-bg);
+      color: var(--input-text);
+      padding: 0 8px;
+      font-size: 12px;
+    }
+    .countdown {
+      margin-top: 8px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px 10px;
+      background: var(--pill-bg);
+    }
+    .bar {
+      margin-top: 6px;
+      width: 100%;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--line);
+      overflow: hidden;
+    }
+    .bar > div {
+      height: 100%;
+      width: 0%;
+      background: #0f766e;
+      transition: width 0.3s ease;
+    }
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(120px, 1fr));
+      gap: 10px;
+    }
+    .kpi {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--pill-bg);
+      padding: 10px;
+    }
+    .kpi .t { color: var(--muted); font-size: 12px; }
+    .kpi .v { margin-top: 6px; font-size: 20px; font-weight: 700; }
+    .good { color: var(--good); }
+    .bad { color: var(--bad); }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    #trendCanvas {
+      width: 100%;
+      height: 280px;
+      display: block;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: linear-gradient(180deg, var(--panel) 0%, var(--chart-canvas-bg) 100%);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    }
+    .chart-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .chart-box {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: linear-gradient(180deg, var(--panel) 0%, var(--chart-canvas-bg) 100%);
+      padding: 8px;
+    }
+    .health-box { position: relative; }
+    .chart-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .chart-controls {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+      min-width: 0;
+    }
+    .chart-select {
+      height: 30px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      padding: 0 8px;
+      background: var(--input-bg);
+      color: var(--input-text);
+      font-size: 12px;
+      min-width: 200px;
+      max-width: 52%;
+    }
+    .chart-select.sm {
+      min-width: 110px;
+      max-width: none;
+    }
+    .chart-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .chart-toggle input {
+      width: 14px;
+      height: 14px;
+      accent-color: var(--accent);
+      margin: 0;
+    }
+    .health-tip {
+      position: absolute;
+      z-index: 6;
+      pointer-events: none;
+      padding: 6px 8px;
+      border-radius: 8px;
+      border: 1px solid var(--line-strong);
+      background: var(--panel);
+      color: var(--text);
+      box-shadow: var(--card-shadow);
+      font-size: 12px;
+      line-height: 1.35;
+      white-space: nowrap;
+      display: none;
+    }
+    .chart-box canvas { width: 100%; height: 260px; display: block; }
+    .sub-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+    .btn-mini {
+      height: 28px;
+      padding: 0 10px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .quota-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+    .quota-head-right { text-align: right; }
+    .quota-list {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      background: linear-gradient(180deg, var(--panel) 0%, var(--chart-canvas-bg) 100%);
+    }
+    .quota-row {
+      display: grid;
+      grid-template-columns: 1.1fr 1.4fr;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+    .quota-row:last-child { border-bottom: 0; }
+    .quota-name {
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 6px;
+      word-break: break-all;
+    }
+    .quota-tags {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .quota-tag {
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--pill-bg);
+      color: var(--muted);
+      font-size: 11px;
+      padding: 2px 8px;
+    }
+    .quota-metrics {
+      display: grid;
+      gap: 8px;
+    }
+    .quota-metric-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .quota-track {
+      width: 100%;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--line);
+      overflow: hidden;
+    }
+    .quota-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 999px;
+      transition: width 0.3s ease;
+      background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
+    }
+    .quota-fill.warn { background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%); }
+    .quota-fill.bad { background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%); }
+    .table-wrap {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      max-height: 56vh;
+      overflow: auto;
+    }
+    .pager {
+      margin-top: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .pager .left, .pager .right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .pager select {
+      height: 32px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      padding: 0 8px;
+      background: var(--input-bg);
+      color: var(--input-text);
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      padding: 8px 6px;
+      vertical-align: middle;
+    }
+    th {
+      background: var(--pill-bg);
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      font-size: 12px;
+      cursor: pointer;
+      user-select: none;
+    }
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--pre-bg);
+      color: var(--pre-text);
+      padding: 10px;
+      font-size: 12px;
+      max-height: 220px;
+      overflow: auto;
+    }
+    @media (max-width: 900px) {
+      .field.sm, .field.md { grid-column: span 12; }
+      .kpis { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+      .row { grid-template-columns: 1fr; }
+      .chart-grid { grid-template-columns: 1fr; }
+      .chart-select { max-width: 100%; min-width: 0; }
+      .chart-controls { justify-content: flex-start; width: 100%; }
+      .chart-select.sm { min-width: 0; }
+      .quota-row { grid-template-columns: 1fr; }
+      .top-actions { justify-content: flex-start; }
+    }
+  </style>
+</head>
+  <body>
+  <div class="wrap">
+    <div class="card">
+      <div class="topbar">
+        <div class="brand-pill">CPA监控</div>
+        <div class="top-actions">
+          <div class="chip-group" title="主题模式">
+            <button id="themeLightBtn" class="chip-btn" type="button">Light</button>
+            <button id="themeDarkBtn" class="chip-btn" type="button">Dark</button>
+            <button id="themeAutoBtn" class="chip-btn" type="button">Auto</button>
+          </div>
+          <a class="chip-link" href="/config.html">配置中心</a>
+          <select id="themeMode" class="theme-switch" title="主题模式" style="display:none;">
+            <option value="auto">跟随系统</option>
+            <option value="light">浅色</option>
+            <option value="dark">夜间</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <span class="pill">当前配置：<span id="activeProfile">-</span></span>
+          <span class="pill">界面刷新：<span id="lastUiRefresh">-</span></span>
+        </div>
+        <div class="small" style="text-align:right;" id="quotaUpdatedAt">授权总量刷新：-</div>
+      </div>
+      <div class="countdown">
+        <div class="small" id="healthLine">状态：-</div>
+        <div class="small" id="countdownLine">自动刷新倒计时：-</div>
+        <div class="bar"><div id="countdownBar"></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="grid">
+        <div class="field sm"><label>统计窗口（小时）</label><input id="hours" type="number" min="1" max="2160" value="24" /></div>
+        <div class="field sm"><label>过滤关键词</label><input id="keyword" placeholder="provider/model/alias/source/auth/key" /></div>
+        <div class="field sm"><label>趋势指标</label><select id="metric"><option value="requests">总请求</option><option value="tokens">总令牌</option><option value="success_rate">成功率(%)</option><option value="latency">平均耗时(ms)</option></select></div>
+        <div class="field sm"><label>趋势点数</label><input id="trendLimit" type="number" min="10" max="5000" value="200" /></div>
+        <div class="field sm"><label>明细条数</label><input id="recordLimit" type="number" min="10" max="5000" value="300" /></div>
+        <div class="field sm"><label>前端自动刷新（已关闭，后台成功后自动刷新）</label><input id="uiRefreshSec" type="number" min="0" max="600" value="0" disabled /></div>
+      </div>
+      <div class="actions">
+        <button id="refreshBtn" class="btn-ghost">立即拉取后端</button>
+        <button id="reloadViewBtn" class="btn-primary">刷新视图</button>
+        <button id="exportStatsBtn" class="btn-ghost">导出模型统计CSV</button>
+        <button id="exportRecordsBtn" class="btn-ghost">导出调用明细CSV</button>
+      </div>
+      <div class="status" id="status"></div>
+    </div>
+
+    <div class="card">
+      <div class="kpis">
+        <div class="kpi"><div class="t">模型组</div><div class="v" id="kpiModels">0</div></div>
+        <div class="kpi"><div class="t">总请求</div><div class="v" id="kpiReq">0</div></div>
+        <div class="kpi"><div class="t">成功率</div><div class="v good" id="kpiSucc">0%</div></div>
+        <div class="kpi"><div class="t">总令牌</div><div class="v" id="kpiTok">0</div></div>
+        <div class="kpi"><div class="t">平均耗时</div><div class="v" id="kpiLat">0ms</div></div>
+        <div class="kpi"><div class="t">失败数</div><div class="v bad" id="kpiFail">0</div></div>
+      </div>
+    </div>
+
+    <div class="card"><canvas id="trendCanvas"></canvas></div>
+
+    <div class="card">
+      <div class="chart-grid">
+        <div class="chart-box">
+          <div class="small" style="margin-bottom:6px;">渠道总令牌占比</div>
+          <canvas id="providerPieCanvas"></canvas>
+        </div>
+        <div class="chart-box">
+          <div class="small" style="margin-bottom:6px;">Top模型请求量</div>
+          <canvas id="modelBarCanvas"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="chart-grid">
+        <div class="chart-box">
+          <div class="small" style="margin-bottom:6px;">成功/失败堆叠趋势</div>
+          <canvas id="successFailCanvas"></canvas>
+        </div>
+        <div class="chart-box">
+          <div class="small" style="margin-bottom:6px;">近24小时请求热力图</div>
+          <canvas id="hourlyHeatCanvas"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="chart-box health-box">
+        <div class="chart-head">
+          <div class="small">来源账号健康度监控</div>
+          <div class="chart-controls">
+            <select id="healthGranularity" class="chart-select sm" title="健康度时间粒度">
+              <option value="15">15分钟</option>
+              <option value="60" selected>1小时</option>
+              <option value="360">6小时</option>
+            </select>
+            <select id="healthFailThreshold" class="chart-select sm" title="失败率告警阈值">
+              <option value="0.01">失败>1%</option>
+              <option value="0.03">失败>3%</option>
+              <option value="0.05" selected>失败>5%</option>
+              <option value="0.10">失败>10%</option>
+            </select>
+            <label class="chart-toggle" title="只显示触发失败阈值的时间点">
+              <input type="checkbox" id="healthAlertsOnly" />
+              仅看告警点
+            </label>
+            <select id="healthSourceSelect" class="chart-select" title="健康度监控来源账号">
+              <option value="__auto__">自动（请求最高）</option>
+            </select>
+          </div>
+        </div>
+        <canvas id="sourceResultCanvas"></canvas>
+        <div id="healthTooltip" class="health-tip"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="quota-head">
+        <div>
+          <div class="small">AUTH FILES</div>
+          <h1 style="font-size:20px;">授权文件总量监控</h1>
+          <div class="small">按授权账号统计当前窗口总请求、总令牌与失败情况</div>
+        </div>
+        <div class="quota-head-right">
+          <div class="small">统计窗口：<span id="authTotalWindow">-</span></div>
+          <div class="small">授权文件：<span id="authTotalCount">0</span></div>
+        </div>
+      </div>
+      <div id="authQuotaList" class="quota-list">
+        <div class="small" style="padding:12px 14px;">加载中...</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="small" style="margin-bottom:8px;">模型统计（点击表头排序）</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th data-key="provider">渠道</th>
+              <th data-key="model">模型</th>
+              <th data-key="alias">别名</th>
+              <th data-key="source">来源账号</th>
+              <th data-key="auth_account">授权账号</th>
+              <th data-key="external_key">对外Key</th>
+              <th data-key="requests">请求</th>
+              <th data-key="success">成功</th>
+              <th data-key="failed">失败</th>
+              <th data-key="success_rate">成功率</th>
+              <th data-key="input_tokens">输入令牌</th>
+              <th data-key="output_tokens">输出令牌</th>
+              <th data-key="reasoning_tokens">推理令牌</th>
+              <th data-key="total_tokens">总令牌</th>
+              <th data-key="avg_latency_ms">平均耗时</th>
+              <th data-key="max_latency_ms">最小/最大耗时</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <div class="pager">
+        <div class="left">
+          <span class="small">每页</span>
+          <select id="statsPageSize">
+            <option value="20">20</option>
+            <option value="50" selected>50</option>
+            <option value="100">100</option>
+            <option value="200">200</option>
+          </select>
+          <span class="small">条</span>
+        </div>
+        <div class="right">
+          <button id="statsPrevBtn" class="btn-ghost" type="button">上一页</button>
+          <span class="small" id="statsPageInfo">第 1 / 1 页</span>
+          <button id="statsNextBtn" class="btn-ghost" type="button">下一页</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="small" style="margin-bottom:8px;">详细调用记录（点击表头排序）</div>
+      <div class="sub-actions">
+        <div class="small" id="recordLinkInfo">未启用图表联动过滤</div>
+        <button id="clearRecordLinkBtn" class="btn-ghost btn-mini" type="button" style="display:none;">清除联动</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th data-rec-key="fetched_at">拉取时间(CST)</th>
+              <th data-rec-key="profile_name">配置档</th>
+              <th data-rec-key="provider">渠道</th>
+              <th data-rec-key="model">模型</th>
+              <th data-rec-key="alias">别名</th>
+              <th data-rec-key="source">来源账号</th>
+              <th data-rec-key="auth_account">授权账号</th>
+              <th data-rec-key="external_key">对外Key</th>
+              <th data-rec-key="requests">请求</th>
+              <th data-rec-key="success">成功</th>
+              <th data-rec-key="failed">失败</th>
+              <th data-rec-key="input_tokens">输入令牌</th>
+              <th data-rec-key="output_tokens">输出令牌</th>
+              <th data-rec-key="reasoning_tokens">推理令牌</th>
+              <th data-rec-key="total_tokens">总令牌</th>
+              <th data-rec-key="avg_latency_ms">平均耗时</th>
+              <th data-rec-key="max_latency_ms">最小/最大耗时</th>
+            </tr>
+          </thead>
+          <tbody id="recordsTbody"></tbody>
+        </table>
+      </div>
+      <div class="pager">
+        <div class="left">
+          <span class="small">每页</span>
+          <select id="recordsPageSize">
+            <option value="20">20</option>
+            <option value="50" selected>50</option>
+            <option value="100">100</option>
+            <option value="200">200</option>
+          </select>
+          <span class="small">条</span>
+        </div>
+        <div class="right">
+          <button id="recordsPrevBtn" class="btn-ghost" type="button">上一页</button>
+          <span class="small" id="recordsPageInfo">第 1 / 1 页</span>
+          <button id="recordsNextBtn" class="btn-ghost" type="button">下一页</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="small" style="margin-bottom:8px;">最近调用日志</div>
+      <pre id="logs"></pre>
+    </div>
+  </div>
+
+  <script>
+    const fmt = new Intl.NumberFormat("zh-CN");
+    const TZ = "Asia/Shanghai";
+    const clockFmt = new Intl.DateTimeFormat("zh-CN", {
+      timeZone: TZ,
+      hour12: false,
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit"
+    });
+    const dateTimeFmt = new Intl.DateTimeFormat("zh-CN", {
+      timeZone: TZ,
+      hour12: false,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit"
+    });
+    const THEME_KEY = "cpa_theme_mode_v1";
+    const AUTO_HEALTH_SOURCE = "__auto__";
+    let THEME = null;
+    const $ = (id) => document.getElementById(id);
+    const VIEW_KEY = "cpa_monitor_view_v2";
+    const state = {
+      activeProfileId: 0,
+      nextRunAtSec: null,
+      autoRefreshEnabled: false,
+      refreshIntervalSec: 0,
+      statsRows: [],
+      statsSummary: {},
+      recordRows: [],
+      trendPoints: [],
+      sortStats: { key: "total_tokens", dir: "desc" },
+      sortRecords: { key: "fetched_at", dir: "desc" },
+      statsPage: 1,
+      recordsPage: 1,
+      healthSource: AUTO_HEALTH_SOURCE,
+      healthGranularityMin: 60,
+      healthFailThreshold: 0.05,
+      healthAlertsOnly: false,
+      healthBars: [],
+      recordLink: null,
+      authQuotaRows: [],
+      authQuotaUpdatedAt: null,
+      uiRefreshFollowBackend: true,
+      lastSeenBackendSuccessAt: "",
+      backendRefreshInFlight: false,
+      uiTimer: null
+    };
+
+    const num = (v) => Number.isFinite(Number(v)) ? Number(v) : 0;
+    const pct = (v) => `${(v * 100).toFixed(2)}%`;
+    const compact = (v, digits = 1) => {
+      const n = num(v);
+      const abs = Math.abs(n);
+      const trim = (s) => s.replace(/\.0+$/, "").replace(/(\.\d*[1-9])0+$/, "$1");
+      if (abs >= 1_000_000) return `${trim((n / 1_000_000).toFixed(digits))}M`;
+      if (abs >= 1_000) return `${trim((n / 1_000).toFixed(digits))}K`;
+      return Number.isInteger(n) ? fmt.format(n) : trim(n.toFixed(digits));
+    };
+    const fmtLatency = (ms) => (num(ms) > 0 ? `${Math.round(num(ms))}ms` : "-");
+    const fmtLatencyRange = (minMs, maxMs) => (num(minMs) > 0 ? `${Math.round(num(minMs))} / ${Math.round(num(maxMs))}ms` : "-");
+    const parseDateSafe = (v) => {
+      if (!v && v !== 0) return null;
+      const d = v instanceof Date ? v : new Date(v);
+      return Number.isNaN(d.getTime()) ? null : d;
+    };
+    const formatChinaDateTime = (v) => {
+      const d = parseDateSafe(v);
+      if (!d) return "-";
+      return dateTimeFmt.format(d).replace(/\//g, "-");
+    };
+    const formatChinaClock = (v = new Date()) => {
+      const d = parseDateSafe(v);
+      return d ? clockFmt.format(d) : "-";
+    };
+    const formatChinaFromEpochSec = (sec) => (Number.isFinite(Number(sec)) ? formatChinaDateTime(new Date(Number(sec) * 1000)) : "-");
+    const getChinaDate = (v) => {
+      const d = parseDateSafe(v);
+      return d ? new Date(d.getTime() + 8 * 3600 * 1000) : null;
+    };
+    const chinaHourKey = (v) => {
+      const d = getChinaDate(v);
+      if (!d) return "";
+      return `${d.getUTCFullYear()}-${d.getUTCMonth() + 1}-${d.getUTCDate()}-${d.getUTCHours()}`;
+    };
+    const chinaHour = (v) => {
+      const d = getChinaDate(v);
+      return d ? d.getUTCHours() : 0;
+    };
+    const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c]));
+
+    function cssVar(name, fallback = "") {
+      const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+      return v || fallback;
+    }
+
+    function getChartTheme() {
+      return {
+        line: cssVar("--chart-line", "#e2e8f0"),
+        text: cssVar("--chart-text", "#334155"),
+        muted: cssVar("--chart-muted", "#64748b"),
+        accent: cssVar("--chart-accent", "#0f766e"),
+        accentSoft: cssVar("--chart-accent-soft", "#14b8a6"),
+        accentDeep: cssVar("--chart-accent-deep", "#0b5f5a"),
+        danger: cssVar("--chart-danger", "#dc2626"),
+        good: cssVar("--chart-good", "#16a34a"),
+        canvasBg: cssVar("--chart-canvas-bg", "#f8fbff"),
+        panel: cssVar("--panel", "#ffffff"),
+        gridSoft: cssVar("--chart-grid-soft", "#eaf0f7"),
+        barBg: cssVar("--chart-bar-bg", "#edf2f7"),
+        palette: [
+          cssVar("--chart-p1", "#0f766e"),
+          cssVar("--chart-p2", "#0284c7"),
+          cssVar("--chart-p3", "#f59e0b"),
+          cssVar("--chart-p4", "#ef4444"),
+          cssVar("--chart-p5", "#10b981"),
+          cssVar("--chart-p6", "#7c3aed"),
+          cssVar("--chart-p7", "#f97316"),
+          cssVar("--chart-p8", "#0891b2")
+        ]
+      };
+    }
+    THEME = getChartTheme();
+
+    function systemTheme() {
+      return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+
+    function applyTheme(mode = "auto") {
+      const effective = mode === "auto" ? systemTheme() : mode;
+      document.documentElement.setAttribute("data-theme", effective);
+      THEME = getChartTheme();
+      const sel = $("themeMode");
+      if (sel && sel.value !== mode) sel.value = mode;
+      const map = {
+        light: $("themeLightBtn"),
+        dark: $("themeDarkBtn"),
+        auto: $("themeAutoBtn")
+      };
+      Object.keys(map).forEach((k) => {
+        const el = map[k];
+        if (!el) return;
+        if (k === mode) el.classList.add("active");
+        else el.classList.remove("active");
+      });
+      try {
+        localStorage.setItem(THEME_KEY, mode);
+      } catch (_) {}
+    }
+
+    function redrawAfterThemeChange() {
+      if (state.statsRows.length) {
+        renderStats(state.statsSummary || {});
+        drawProviderPie(state.statsRows);
+        drawModelTopBar(state.statsRows);
+        drawSourceResultMonitor();
+      }
+      if (state.trendPoints.length) {
+        drawTrend(state.trendPoints);
+        drawSuccessFailStacked(state.trendPoints);
+      }
+      if (state.recordRows.length) {
+        renderRecords();
+        drawHourlyHeat(state.recordRows);
+      }
+      if (state.authQuotaRows.length) renderAuthQuota();
+    }
+
+    function setStatus(msg, level = "info") {
+      const el = $("status");
+      el.textContent = msg;
+      el.style.color = level === "error" ? cssVar("--bad", "#b91c1c") : level === "warn" ? cssVar("--warn", "#b45309") : cssVar("--status-info", "#6b7280");
+    }
+
+    async function api(path, opts = {}) {
+      const r = await fetch(path, opts);
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || d.ok === false) throw new Error(d.message || `${r.status} ${r.statusText}`);
+      return d;
+    }
+
+    function saveView() {
+      localStorage.setItem(VIEW_KEY, JSON.stringify({
+        hours: $("hours").value,
+        keyword: $("keyword").value,
+        metric: $("metric").value,
+        trendLimit: $("trendLimit").value,
+        recordLimit: $("recordLimit").value,
+        statsPageSize: $("statsPageSize").value,
+        recordsPageSize: $("recordsPageSize").value,
+        uiRefreshFollowBackend: state.uiRefreshFollowBackend ? 1 : 0,
+        healthGranularity: $("healthGranularity").value,
+        healthFailThreshold: $("healthFailThreshold").value,
+        healthAlertsOnly: $("healthAlertsOnly").checked ? 1 : 0,
+        healthSource: state.healthSource,
+        uiRefreshSec: $("uiRefreshSec").value
+      }));
+    }
+
+    function loadView() {
+      try {
+        const v = JSON.parse(localStorage.getItem(VIEW_KEY) || "{}");
+        if (v.hours) $("hours").value = v.hours;
+        if (v.keyword) $("keyword").value = v.keyword;
+        if (v.metric) $("metric").value = v.metric;
+        if (v.trendLimit) $("trendLimit").value = v.trendLimit;
+        if (v.recordLimit) $("recordLimit").value = v.recordLimit;
+        if (v.statsPageSize) $("statsPageSize").value = v.statsPageSize;
+        if (v.recordsPageSize) $("recordsPageSize").value = v.recordsPageSize;
+        if (v.healthGranularity) {
+          const gv = String(v.healthGranularity);
+          $("healthGranularity").value = gv;
+          state.healthGranularityMin = Math.max(1, num(gv || 60));
+        }
+        if (v.healthFailThreshold) {
+          const tv = String(v.healthFailThreshold);
+          $("healthFailThreshold").value = tv;
+          state.healthFailThreshold = Math.max(0.001, Math.min(0.5, num(tv || 0.05)));
+        }
+        if (v.healthAlertsOnly !== undefined) {
+          state.healthAlertsOnly = String(v.healthAlertsOnly) === "1" || v.healthAlertsOnly === true;
+          $("healthAlertsOnly").checked = state.healthAlertsOnly;
+        }
+        if (v.healthSource) state.healthSource = String(v.healthSource);
+        state.uiRefreshFollowBackend = true;
+        $("uiRefreshSec").value = "0";
+      } catch (_) {}
+    }
+
+    function hideHealthTooltip() {
+      const tip = $("healthTooltip");
+      if (!tip) return;
+      tip.style.display = "none";
+    }
+
+    function showHealthTooltip(evt, bar) {
+      const tip = $("healthTooltip");
+      const canvas = $("sourceResultCanvas");
+      if (!tip || !canvas || !bar) return;
+      const req = Math.max(0, num(bar.data.requests || 0));
+      const succ = Math.max(0, num(bar.data.success || 0));
+      const fail = Math.max(0, num(bar.data.failed || 0));
+      const failRate = req ? (fail / req) : 0;
+      const at = formatChinaDateTime(bar.data.bucketAt);
+      tip.textContent = `${bar.source || "-"} | ${at} | 请求 ${compact(req)} | 成功 ${compact(succ)} | 失败 ${compact(fail)} | 失败率 ${(failRate * 100).toFixed(2)}%`;
+      tip.style.display = "block";
+      const x = Math.min(canvas.clientWidth - 10, Math.max(10, evt.offsetX + 12));
+      const y = Math.max(8, evt.offsetY - 28);
+      tip.style.left = `${x}px`;
+      tip.style.top = `${y}px`;
+      tip.style.transform = x > canvas.clientWidth * 0.72 ? "translateX(-100%)" : "translateX(0)";
+    }
+
+    function paginateRows(rows, page, pageSize) {
+      const total = rows.length;
+      const size = Math.max(1, num(pageSize || 50));
+      const totalPages = Math.max(1, Math.ceil(total / size));
+      const current = Math.min(Math.max(1, num(page || 1)), totalPages);
+      const start = (current - 1) * size;
+      return {
+        current,
+        total,
+        totalPages,
+        pageSize: size,
+        rows: rows.slice(start, start + size)
+      };
+    }
+
+    function updatePager(which, pg) {
+      const prefix = which === "stats" ? "stats" : "records";
+      $(`${prefix}PageInfo`).textContent = `第 ${pg.current} / ${pg.totalPages} 页，共 ${compact(pg.total, 0)} 条`;
+      $(`${prefix}PrevBtn`).disabled = pg.current <= 1;
+      $(`${prefix}NextBtn`).disabled = pg.current >= pg.totalPages;
+    }
+
+    function updateLastRefreshText() {
+      $("lastUiRefresh").textContent = formatChinaClock();
+    }
+
+    function formatCountdown(sec) {
+      const s = Math.max(0, Math.floor(sec));
+      const m = Math.floor(s / 60);
+      const r = s % 60;
+      return `${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
+    }
+
+    function updateCountdownLine() {
+      const line = $("countdownLine");
+      const bar = $("countdownBar");
+      if (!state.autoRefreshEnabled) {
+        line.textContent = "自动刷新倒计时：已关闭";
+        bar.style.width = "0%";
+        return;
+      }
+      if (!state.nextRunAtSec) {
+        line.textContent = "自动刷新倒计时：等待计划中";
+        bar.style.width = "0%";
+        return;
+      }
+      const left = state.nextRunAtSec - (Date.now() / 1000);
+      if (left <= 0) {
+        line.textContent = "自动刷新倒计时：即将执行...";
+        bar.style.width = "100%";
+        return;
+      }
+      const total = Math.max(1, state.refreshIntervalSec || 60);
+      const progress = Math.max(0, Math.min(100, ((total - left) / total) * 100));
+      line.textContent = `自动刷新倒计时：${formatCountdown(left)}`;
+      bar.style.width = `${progress.toFixed(1)}%`;
+    }
+
+    function compareValue(a, b) {
+      const an = Number(a), bn = Number(b);
+      if (Number.isFinite(an) && Number.isFinite(bn)) return an - bn;
+      return String(a ?? "").localeCompare(String(b ?? ""), "zh-CN");
+    }
+
+    function sortRows(rows, sortState) {
+      const dir = sortState.dir === "asc" ? 1 : -1;
+      return [...rows].sort((x, y) => dir * compareValue(x[sortState.key], y[sortState.key]));
+    }
+
+    async function loadHealth(opts = {}) {
+      const fromPolling = !!opts.fromPolling;
+      const d = await api("/api/health");
+      const ap = d.active_profile;
+      state.activeProfileId = ap ? Number(ap.id) : 0;
+      $("activeProfile").textContent = ap ? `${ap.name} (#${ap.id})` : "-";
+
+      const c = d.config_brief || {};
+      state.autoRefreshEnabled = !!c.auto_refresh_enabled;
+      state.refreshIntervalSec = num(c.refresh_interval_sec || 60);
+      if (state.uiRefreshFollowBackend) $("uiRefreshSec").value = "0";
+
+      const s = d.scheduler || {};
+      state.nextRunAtSec = s.next_run_at || null;
+      const next = formatChinaFromEpochSec(s.next_run_at);
+      const last = formatChinaDateTime(s.last_run_at);
+      $("healthLine").textContent = `状态：last=${last} | ok=${String(s.last_ok)} | next=${next} | msg=${s.last_message || "-"}`;
+      updateCountdownLine();
+
+      const successAt = String(s.last_ok && s.last_run_at ? s.last_run_at : "");
+      if (successAt && !state.lastSeenBackendSuccessAt) {
+        state.lastSeenBackendSuccessAt = successAt;
+        return;
+      }
+      if (successAt && successAt !== state.lastSeenBackendSuccessAt) {
+        state.lastSeenBackendSuccessAt = successAt;
+        if (fromPolling && !state.backendRefreshInFlight) {
+          state.backendRefreshInFlight = true;
+          setStatus("检测到后台成功拉取，正在刷新视图...");
+          reloadData()
+            .then(() => setStatus("后台成功拉取后已自动刷新视图。"))
+            .catch((e) => setStatus(`后台触发刷新失败: ${e.message}`, "error"))
+            .finally(() => { state.backendRefreshInFlight = false; });
+        }
+      }
+    }
+
+    function renderStats(summary) {
+      state.statsSummary = summary || {};
+      $("kpiModels").textContent = compact(summary.models || 0, 0);
+      $("kpiReq").textContent = compact(summary.requests || 0);
+      $("kpiSucc").textContent = pct(summary.success_rate || 0);
+      $("kpiTok").textContent = compact(summary.total_tokens || 0);
+      $("kpiLat").textContent = fmtLatency(summary.avg_latency_ms || 0);
+      $("kpiFail").textContent = compact(summary.failed || 0);
+
+      const sorted = sortRows(state.statsRows, state.sortStats);
+      const pg = paginateRows(sorted, state.statsPage, $("statsPageSize").value);
+      state.statsPage = pg.current;
+      updatePager("stats", pg);
+      $("tbody").innerHTML = pg.rows.map((r) => `
+        <tr>
+          <td>${esc(r.provider)}</td>
+          <td class="mono">${esc(r.model)}</td>
+          <td class="mono">${esc(r.alias)}</td>
+          <td class="mono">${esc(r.source)}</td>
+          <td class="mono">${esc(r.auth_account || "-")}</td>
+          <td class="mono">${esc(r.external_key || "-")}</td>
+          <td>${compact(r.requests)}</td>
+          <td class="good">${compact(r.success)}</td>
+          <td class="bad">${compact(r.failed)}</td>
+          <td>${pct(r.success_rate)}</td>
+          <td>${compact(r.input_tokens)}</td>
+          <td>${compact(r.output_tokens)}</td>
+          <td>${compact(r.reasoning_tokens)}</td>
+          <td><strong>${compact(r.total_tokens)}</strong></td>
+          <td>${fmtLatency(r.avg_latency_ms)}</td>
+          <td>${fmtLatencyRange(r.min_latency_ms, r.max_latency_ms)}</td>
+        </tr>
+      `).join("");
+    }
+
+    function renderRecords() {
+      const allRows = state.recordRows || [];
+      const linked = state.recordLink;
+      const linkedRows = linked ? allRows.filter((r) => {
+        const source = String(r.source || r.auth_account || "-");
+        if (source !== linked.source) return false;
+        const d = parseDateSafe(r.fetched_at);
+        if (!d) return false;
+        const t = d.getTime();
+        return t >= linked.startMs && t < linked.endMs;
+      }) : allRows;
+      const sorted = sortRows(linkedRows, state.sortRecords);
+      const pg = paginateRows(sorted, state.recordsPage, $("recordsPageSize").value);
+      state.recordsPage = pg.current;
+      updatePager("records", pg);
+      if (!linked) {
+        $("recordLinkInfo").textContent = "未启用图表联动过滤";
+        $("clearRecordLinkBtn").style.display = "none";
+      } else {
+        const start = formatChinaDateTime(linked.startMs);
+        const end = formatChinaDateTime(linked.endMs);
+        $("recordLinkInfo").textContent = `联动过滤：${linked.source} | ${start} ~ ${end} | 命中 ${compact(linkedRows.length, 0)} / ${compact(allRows.length, 0)} 条`;
+        $("clearRecordLinkBtn").style.display = "";
+      }
+      $("recordsTbody").innerHTML = pg.rows.map((r) => `
+        <tr>
+          <td class="mono">${esc(formatChinaDateTime(r.fetched_at))}</td>
+          <td class="mono">${esc(r.profile_name)}</td>
+          <td>${esc(r.provider)}</td>
+          <td class="mono">${esc(r.model)}</td>
+          <td class="mono">${esc(r.alias)}</td>
+          <td class="mono">${esc(r.source)}</td>
+          <td class="mono">${esc(r.auth_account || "-")}</td>
+          <td class="mono">${esc(r.external_key || "-")}</td>
+          <td>${compact(r.requests || 0)}</td>
+          <td class="good">${compact(r.success || 0)}</td>
+          <td class="bad">${compact(r.failed || 0)}</td>
+          <td>${compact(r.input_tokens || 0)}</td>
+          <td>${compact(r.output_tokens || 0)}</td>
+          <td>${compact(r.reasoning_tokens || 0)}</td>
+          <td><strong>${compact(r.total_tokens || 0)}</strong></td>
+          <td>${fmtLatency(r.avg_latency_ms)}</td>
+          <td>${fmtLatencyRange(r.min_latency_ms, r.max_latency_ms)}</td>
+        </tr>
+      `).join("");
+    }
+
+    function quotaClass(pctValue) {
+      if (pctValue >= 1) return "bad";
+      if (pctValue >= 0.8) return "warn";
+      return "";
+    }
+
+    function aggregateQuotaRows(rows) {
+      const map = new Map();
+      for (const r of (rows || [])) {
+        const auth = String(r.auth_account || "").trim();
+        const source = String(r.source || "-").trim();
+        const key = auth || source || "-";
+        if (!map.has(key)) {
+          map.set(key, {
+            key,
+            auth,
+            source,
+            requests: 0,
+            totalTokens: 0,
+            success: 0,
+            failed: 0,
+            sourceSet: new Set(),
+            keySet: new Set()
+          });
+        }
+        const cur = map.get(key);
+        cur.requests += Math.max(0, num(r.requests || 0));
+        cur.totalTokens += Math.max(0, num(r.total_tokens || 0));
+        cur.success += Math.max(0, num(r.success || 0));
+        cur.failed += Math.max(0, num(r.failed || 0));
+        if (r.source) cur.sourceSet.add(String(r.source));
+        if (r.external_key) cur.keySet.add(String(r.external_key));
+      }
+      return map;
+    }
+
+    function renderAuthQuota() {
+      const list = $("authQuotaList");
+      if (!list) return;
+      const rows = state.authQuotaRows || [];
+      const h = Math.max(1, num($("hours").value || 24));
+      $("authTotalWindow").textContent = `${h}h`;
+      $("authTotalCount").textContent = compact(rows.length, 0);
+      if (state.authQuotaUpdatedAt) {
+        $("quotaUpdatedAt").textContent = `授权总量刷新：${formatChinaDateTime(state.authQuotaUpdatedAt)}`;
+      }
+      if (!rows.length) {
+        list.innerHTML = `<div class="small" style="padding:12px 14px;">暂无授权总量数据</div>`;
+        return;
+      }
+      const totalReq = Math.max(1, rows.reduce((s, r) => s + num(r.requests || 0), 0));
+      const totalTok = Math.max(1, rows.reduce((s, r) => s + num(r.totalTokens || 0), 0));
+      list.innerHTML = rows.map((r) => {
+        const reqShare = num(r.requests || 0) / totalReq;
+        const tokShare = num(r.totalTokens || 0) / totalTok;
+        const c5 = quotaClass(1 - num(r.successRate || 0));
+        const c7 = quotaClass(1 - num(r.successRate || 0));
+        const n5 = Math.min(100, reqShare * 100);
+        const n7 = Math.min(100, tokShare * 100);
+        const authTag = r.auth ? "授权账号" : "来源账号";
+        return `
+          <div class="quota-row">
+            <div>
+              <div class="quota-name">${esc(r.key)}</div>
+              <div class="quota-tags">
+                <span class="quota-tag">${esc(authTag)}</span>
+                <span class="quota-tag">来源${compact(r.sourceCount || 0, 0)}个</span>
+                <span class="quota-tag">Key${compact(r.keyCount || 0, 0)}个</span>
+                <span class="quota-tag">失败 ${compact(r.failed || 0, 0)}</span>
+                <span class="quota-tag">成功率 ${((num(r.successRate) || 0) * 100).toFixed(1)}%</span>
+              </div>
+            </div>
+            <div class="quota-metrics">
+              <div>
+                <div class="quota-metric-head">
+                  <span>请求总量占比</span>
+                  <span>${compact(r.requests || 0)} / ${compact(totalReq)} (${(reqShare * 100).toFixed(1)}%)</span>
+                </div>
+                <div class="quota-track"><div class="quota-fill ${c5}" style="width:${n5.toFixed(2)}%"></div></div>
+              </div>
+              <div>
+                <div class="quota-metric-head">
+                  <span>令牌总量占比</span>
+                  <span>${compact(r.totalTokens || 0)} / ${compact(totalTok)} (${(tokShare * 100).toFixed(1)}%)</span>
+                </div>
+                <div class="quota-track"><div class="quota-fill ${c7}" style="width:${n7.toFixed(2)}%"></div></div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function setupCanvas(id, fallbackH = 260) {
+      const canvas = $(id);
+      const dpr = window.devicePixelRatio || 1;
+      const w = canvas.clientWidth || 500;
+      const h = canvas.clientHeight || fallbackH;
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+      const ctx = canvas.getContext("2d");
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+      return { ctx, w, h };
+    }
+
+    function roundRect(ctx, x, y, w, h, r) {
+      const rr = Math.max(0, Math.min(r, Math.min(w, h) / 2));
+      ctx.beginPath();
+      ctx.moveTo(x + rr, y);
+      ctx.arcTo(x + w, y, x + w, y + h, rr);
+      ctx.arcTo(x + w, y + h, x, y + h, rr);
+      ctx.arcTo(x, y + h, x, y, rr);
+      ctx.arcTo(x, y, x + w, y, rr);
+      ctx.closePath();
+    }
+
+    function drawTrend(points) {
+      const { ctx, w, h } = setupCanvas("trendCanvas", 280);
+      const metric = $("metric").value;
+      if (!points.length) {
+        ctx.fillStyle = THEME.muted;
+        ctx.font = "13px Segoe UI";
+        ctx.fillText("暂无趋势数据", 16, 26);
+        return;
+      }
+      const series = points.map((p) => {
+        if (metric === "requests") return num(p.requests);
+        if (metric === "tokens") return num(p.tokens);
+        if (metric === "success_rate") return num(p.success_rate) * 100;
+        return num(p.avg_latency_ms);
+      });
+      const minRaw = Math.min(...series);
+      const maxRaw = Math.max(...series);
+      const span = Math.max(1, maxRaw - minRaw);
+      const min = Math.max(0, minRaw - span * 0.12);
+      const max = maxRaw + span * 0.12;
+      const left = 56, right = 16, top = 16, bottom = 40;
+      const cw = w - left - right, ch = h - top - bottom;
+
+      const bg = ctx.createLinearGradient(0, top, 0, top + ch);
+      bg.addColorStop(0, THEME.panel);
+      bg.addColorStop(1, THEME.canvasBg);
+      ctx.fillStyle = bg;
+      roundRect(ctx, left, top, cw, ch, 10);
+      ctx.fill();
+
+      ctx.strokeStyle = THEME.line;
+      roundRect(ctx, left, top, cw, ch, 10);
+      ctx.stroke();
+
+      for (let i = 0; i <= 4; i++) {
+        const y = top + (ch * i / 4);
+        const v = max - ((max - min) * i / 4);
+        ctx.strokeStyle = THEME.gridSoft;
+        ctx.setLineDash([4, 5]);
+        ctx.beginPath();
+        ctx.moveTo(left, y);
+        ctx.lineTo(left + cw, y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = THEME.muted;
+        ctx.font = "11px Segoe UI";
+        ctx.textAlign = "right";
+        let t = compact(v);
+        if (metric === "success_rate") t = `${v.toFixed(1)}%`;
+        if (metric === "latency") t = `${Math.round(v)}ms`;
+        ctx.fillText(t, left - 8, y + 4);
+      }
+      const toX = (i) => left + (series.length === 1 ? 0 : cw * i / (series.length - 1));
+      const toY = (v) => top + ch - ((v - min) / (max - min)) * ch;
+
+      const area = ctx.createLinearGradient(0, top, 0, top + ch);
+      area.addColorStop(0, "rgba(20,184,166,0.22)");
+      area.addColorStop(1, "rgba(20,184,166,0.03)");
+      ctx.beginPath();
+      series.forEach((v, i) => {
+        const x = toX(i), y = toY(v);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.lineTo(toX(series.length - 1), top + ch);
+      ctx.lineTo(toX(0), top + ch);
+      ctx.closePath();
+      ctx.fillStyle = area;
+      ctx.fill();
+
+      ctx.strokeStyle = THEME.accent;
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      series.forEach((v, i) => {
+        const x = toX(i), y = toY(v);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+
+      ctx.fillStyle = THEME.panel;
+      ctx.strokeStyle = THEME.accentDeep;
+      series.forEach((v, i) => {
+        if (i !== 0 && i !== series.length - 1 && i !== Math.floor((series.length - 1) / 2)) return;
+        const x = toX(i), y = toY(v);
+        ctx.beginPath();
+        ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      });
+
+      ctx.fillStyle = THEME.muted;
+      ctx.font = "11px Segoe UI";
+      ctx.textAlign = "center";
+      const x0 = 0;
+      const xMid = Math.floor((series.length - 1) / 2);
+      const xLast = series.length - 1;
+      [x0, xMid, xLast].forEach((idx) => {
+        const label = formatChinaDateTime(points[idx] && points[idx].fetched_at).slice(11, 16);
+        ctx.fillText(label, toX(idx), h - 12);
+      });
+      ctx.textAlign = "left";
+    }
+
+    function drawProviderPie(rows) {
+      const { ctx, w, h } = setupCanvas("providerPieCanvas");
+      const map = new Map();
+      for (const r of rows) map.set(r.provider || "-", (map.get(r.provider || "-") || 0) + num(r.total_tokens));
+      const items = [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
+      const total = items.reduce((s, x) => s + x[1], 0);
+      if (!total) {
+        ctx.fillStyle = THEME.muted;
+        ctx.font = "13px Segoe UI";
+        ctx.fillText("暂无数据", 16, 26);
+        return;
+      }
+      const colors = THEME.palette;
+      const cx = w * 0.34, cy = h * 0.52, r = Math.min(w, h) * 0.28;
+      const lw = Math.max(18, Math.min(26, r * 0.35));
+      let start = -Math.PI / 2;
+      items.forEach((it, i) => {
+        const ang = (it[1] / total) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, start, start + ang);
+        ctx.fillStyle = colors[i % colors.length];
+        ctx.strokeStyle = colors[i % colors.length];
+        ctx.lineWidth = lw;
+        ctx.lineCap = "round";
+        ctx.stroke();
+        start += ang;
+      });
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, r - lw * 0.6, 0, Math.PI * 2);
+      ctx.fillStyle = THEME.panel;
+      ctx.fill();
+
+      ctx.fillStyle = THEME.text;
+      ctx.font = "12px Segoe UI";
+      ctx.textAlign = "center";
+      ctx.fillText("总令牌", cx, cy - 2);
+      ctx.font = "bold 16px Segoe UI";
+      ctx.fillText(compact(total), cx, cy + 20);
+      ctx.textAlign = "left";
+      ctx.font = "12px Segoe UI";
+      let y = 28;
+      items.forEach((it, i) => {
+        const p = ((it[1] / total) * 100).toFixed(1);
+        ctx.fillStyle = colors[i % colors.length];
+        roundRect(ctx, w * 0.62, y - 9, 10, 10, 2);
+        ctx.fill();
+        ctx.fillStyle = THEME.text;
+        const name = String(it[0] || "-");
+        ctx.fillText(`${name}  ${compact(it[1])} (${p}%)`, w * 0.62 + 16, y);
+        y += 22;
+      });
+    }
+
+    function drawModelTopBar(rows) {
+      const { ctx, w, h } = setupCanvas("modelBarCanvas");
+      const top = [...rows].sort((a, b) => num(b.requests) - num(a.requests)).slice(0, 8);
+      if (!top.length) {
+        ctx.fillStyle = THEME.muted;
+        ctx.font = "13px Segoe UI";
+        ctx.fillText("暂无数据", 16, 26);
+        return;
+      }
+      const maxV = Math.max(...top.map((x) => num(x.requests))) || 1;
+      const left = 120, right = 16, topPad = 16, bottom = 20;
+      const bw = w - left - right;
+      const step = (h - topPad - bottom) / top.length;
+      const barGradient = ctx.createLinearGradient(left, 0, left + bw, 0);
+      barGradient.addColorStop(0, THEME.accentSoft);
+      barGradient.addColorStop(1, THEME.accentDeep);
+      top.forEach((r, i) => {
+        const y = topPad + i * step + 4;
+        const barH = Math.max(10, step - 8);
+        const v = num(r.requests);
+        const ww = Math.max(2, (v / maxV) * bw);
+        const short = String(r.model || "-").slice(0, 18) + (String(r.model || "-").length > 18 ? "..." : "");
+        ctx.fillStyle = THEME.text;
+        ctx.font = "12px Segoe UI";
+        ctx.fillText(short, 8, y + barH - 2);
+        ctx.fillStyle = THEME.barBg;
+        roundRect(ctx, left, y, bw, barH, 5);
+        ctx.fill();
+        ctx.fillStyle = barGradient;
+        roundRect(ctx, left, y, ww, barH, 5);
+        ctx.fill();
+        ctx.fillStyle = THEME.text;
+        ctx.fillText(compact(v), left + ww + 6, y + barH - 2);
+      });
+    }
+
+    function refreshHealthSourceOptions() {
+      const sel = $("healthSourceSelect");
+      if (!sel) return;
+      const srcAgg = new Map();
+      for (const r of state.statsRows || []) {
+        const source = String(r.source || r.auth_account || "-");
+        const req = Math.max(0, num(r.requests || 0));
+        srcAgg.set(source, (srcAgg.get(source) || 0) + req);
+      }
+      const ranked = [...srcAgg.entries()].sort((a, b) => b[1] - a[1]);
+      const existing = state.healthSource || AUTO_HEALTH_SOURCE;
+      const hasExisting = ranked.some((it) => it[0] === existing);
+      const options = [`<option value="${AUTO_HEALTH_SOURCE}">自动（请求最高）</option>`];
+      if (existing !== AUTO_HEALTH_SOURCE && !hasExisting) {
+        options.push(`<option value="${esc(existing)}">${esc(existing)}（无数据）</option>`);
+      }
+      for (const [name, req] of ranked) {
+        options.push(`<option value="${esc(name)}">${esc(name)}（${compact(req)} 请求）</option>`);
+      }
+      sel.innerHTML = options.join("");
+      state.healthSource = existing;
+      if (!hasExisting && existing !== AUTO_HEALTH_SOURCE) state.healthSource = AUTO_HEALTH_SOURCE;
+      sel.value = state.healthSource;
+    }
+
+    function buildHealthSeries(sourceName, granularityMin) {
+      const recs = state.recordRows || [];
+      const bucketMs = Math.max(1, num(granularityMin || 60)) * 60 * 1000;
+      const map = new Map();
+      for (const r of recs) {
+        const source = String(r.source || r.auth_account || "-");
+        if (source !== sourceName) continue;
+        const d = parseDateSafe(r.fetched_at);
+        if (!d) continue;
+        const t = d.getTime();
+        const bucketAt = Math.floor(t / bucketMs) * bucketMs;
+        if (!map.has(bucketAt)) map.set(bucketAt, { bucketAt, requests: 0, success: 0, failed: 0 });
+        const item = map.get(bucketAt);
+        item.requests += Math.max(0, num(r.requests || 0));
+        item.success += Math.max(0, num(r.success || 0));
+        item.failed += Math.max(0, num(r.failed || 0));
+      }
+      return [...map.values()].sort((a, b) => a.bucketAt - b.bucketAt);
+    }
+
+    function drawSourceResultMonitor() {
+      const { ctx, w, h } = setupCanvas("sourceResultCanvas", 120);
+      hideHealthTooltip();
+      const stats = state.statsRows || [];
+      const granularityMin = Math.max(1, num(state.healthGranularityMin || 60));
+      const failThreshold = Math.max(0.001, Math.min(0.5, num(state.healthFailThreshold || 0.05)));
+      const successThreshold = 1 - failThreshold;
+      const criticalFailThreshold = Math.max(failThreshold + 0.02, Math.min(0.5, failThreshold * 2));
+      const criticalSuccessThreshold = 1 - criticalFailThreshold;
+      const srcAgg = new Map();
+      for (const r of stats) {
+        const source = String(r.source || r.auth_account || "-");
+        const req = Math.max(0, num(r.requests || 0));
+        const succ = Math.max(0, num(r.success || 0));
+        const fail = Math.max(0, num(r.failed || 0));
+        if (!srcAgg.has(source)) srcAgg.set(source, { source, req: 0, succ: 0, fail: 0 });
+        const cur = srcAgg.get(source);
+        cur.req += req;
+        cur.succ += succ;
+        cur.fail += fail;
+      }
+      const selected = state.healthSource || AUTO_HEALTH_SOURCE;
+      const top = [...srcAgg.values()].sort((a, b) => b.req - a.req)[0];
+      const target = selected !== AUTO_HEALTH_SOURCE ? srcAgg.get(selected) : top;
+      const sourceName = target ? target.source : (selected !== AUTO_HEALTH_SOURCE ? selected : "-");
+      const points = buildHealthSeries(sourceName, granularityMin).slice(-72);
+      state.healthBars = [];
+      if (!points.length) {
+        ctx.fillStyle = THEME.muted;
+        ctx.font = "13px Segoe UI";
+        ctx.fillText(`暂无来源账号健康数据（${granularityMin}分钟粒度）`, 16, 26);
+        return;
+      }
+
+      const overallReq = target ? Math.max(1, num(target.req || 0)) : Math.max(1, points.reduce((s, x) => s + num(x.requests || 0), 0));
+      const overallSucc = target ? num(target.succ || 0) : points.reduce((s, x) => s + num(x.success || 0), 0);
+      const overallFail = target ? num(target.fail || 0) : points.reduce((s, x) => s + num(x.failed || 0), 0);
+      const overallRate = Math.max(0, Math.min(1, overallSucc / overallReq));
+      const score = `${(overallRate * 100).toFixed(2)}%`;
+
+      const leftW = Math.max(150, Math.min(280, w * 0.28));
+      const gap = 2;
+      const stripLeft = leftW + 14;
+      const stripRight = 14;
+      const stripTop = 26;
+      const stripH = 48;
+      const stripW = Math.max(90, w - stripLeft - stripRight);
+      const maxBars = Math.max(14, Math.floor(stripW / 5));
+      const sampled = points.length <= maxBars
+        ? points
+        : Array.from({ length: maxBars }, (_, i) => points[Math.floor(i * (points.length - 1) / (maxBars - 1))]);
+      let series = sampled;
+      if (state.healthAlertsOnly) {
+        series = sampled.filter((p) => {
+          const req = Math.max(1, num(p.requests || 0));
+          return Math.max(0, num(p.failed || 0)) / req > failThreshold;
+        });
+      }
+      if (!series.length) {
+        ctx.fillStyle = THEME.muted;
+        ctx.font = "13px Segoe UI";
+        ctx.fillText(`当前阈值下无告警点（失败>${Math.round(failThreshold * 100)}%）`, 16, 26);
+        return;
+      }
+      const n = series.length;
+      const barW = Math.max(3, Math.floor((stripW - (n - 1) * gap) / n));
+
+      const bg = ctx.createLinearGradient(0, 0, 0, h);
+      bg.addColorStop(0, `${THEME.line}55`);
+      bg.addColorStop(1, `${THEME.line}22`);
+      ctx.fillStyle = bg;
+      roundRect(ctx, 0, 0, w, h, 12);
+      ctx.fill();
+
+      const badgeW = 68;
+      const badgeH = 28;
+      const badgeY = 14;
+      const badgeColor = overallRate >= 0.9 ? "#22c55e" : overallRate >= 0.7 ? "#84cc16" : overallRate >= 0.5 ? "#f59e0b" : "#ef4444";
+      ctx.fillStyle = badgeColor;
+      roundRect(ctx, 10, badgeY, badgeW, badgeH, 14);
+      ctx.fill();
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 13px Segoe UI";
+      ctx.textAlign = "center";
+      ctx.fillText(score, 10 + badgeW / 2, badgeY + 19);
+      ctx.textAlign = "left";
+
+      const title = sourceName.length > 26 ? `${sourceName.slice(0, 26)}...` : sourceName;
+      ctx.fillStyle = THEME.text;
+      ctx.font = "16px Segoe UI";
+      ctx.fillText(title, 88, 34);
+      ctx.fillStyle = THEME.muted;
+      ctx.font = "12px Segoe UI";
+      const granLabel = granularityMin >= 360 ? "6小时" : granularityMin >= 60 ? "1小时" : "15分钟";
+      ctx.fillText(`${selected === AUTO_HEALTH_SOURCE ? "自动来源" : "指定来源"} | ${granLabel}粒度 | 阈值失败>${Math.round(failThreshold * 100)}%`, 88, 54);
+
+      ctx.fillStyle = `${THEME.line}66`;
+      roundRect(ctx, stripLeft - 6, stripTop - 6, stripW + 12, stripH + 12, 10);
+      ctx.fill();
+
+      // SLA three-zone background: healthy (green), warning (amber), risk (red)
+      const yWarn = stripTop + (1 - successThreshold) * stripH;
+      const yRisk = stripTop + (1 - criticalSuccessThreshold) * stripH;
+      const healthyH = Math.max(0, yWarn - stripTop);
+      const warnH = Math.max(0, yRisk - yWarn);
+      const riskH = Math.max(0, stripTop + stripH - yRisk);
+      if (healthyH > 0) {
+        ctx.fillStyle = `${THEME.good}24`;
+        roundRect(ctx, stripLeft, stripTop, stripW, healthyH, 4);
+        ctx.fill();
+      }
+      if (warnH > 0) {
+        ctx.fillStyle = "rgba(245, 158, 11, 0.18)";
+        ctx.fillRect(stripLeft, yWarn, stripW, warnH);
+      }
+      if (riskH > 0) {
+        ctx.fillStyle = `${THEME.danger}20`;
+        roundRect(ctx, stripLeft, yRisk, stripW, riskH, 4);
+        ctx.fill();
+      }
+
+      const thresholdY = stripTop + (1 - successThreshold) * stripH;
+      ctx.strokeStyle = `${THEME.danger}cc`;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(stripLeft, thresholdY);
+      ctx.lineTo(stripLeft + stripW, thresholdY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      const criticalY = stripTop + (1 - criticalSuccessThreshold) * stripH;
+      ctx.strokeStyle = "rgba(245, 158, 11, 0.9)";
+      ctx.setLineDash([3, 5]);
+      ctx.beginPath();
+      ctx.moveTo(stripLeft, criticalY);
+      ctx.lineTo(stripLeft + stripW, criticalY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      const colorForRate = (rate) => {
+        const hue = 3 + Math.round(Math.max(0, Math.min(1, rate)) * 137);
+        return `hsl(${hue} 78% 60%)`;
+      };
+      for (let i = 0; i < n; i++) {
+        const p = series[i];
+        const req = Math.max(1, num(p.requests || 0));
+        const succ = Math.max(0, num(p.success || 0));
+        const fail = Math.max(0, num(p.failed || 0));
+        const rate = Math.max(0, Math.min(1, succ / req));
+        const failRate = Math.max(0, Math.min(1, fail / req));
+        const x = stripLeft + i * (barW + gap);
+        const vH = Math.max(2, Math.round(rate * stripH));
+        const y = stripTop + (stripH - vH);
+        ctx.fillStyle = failRate > failThreshold ? THEME.danger : colorForRate(rate);
+        roundRect(ctx, x, y, barW, vH, 2);
+        ctx.fill();
+        state.healthBars.push({
+          x,
+          y: stripTop,
+          w: barW,
+          h: stripH,
+          source: sourceName,
+          data: p
+        });
+        if (failRate > failThreshold) {
+          ctx.strokeStyle = `${THEME.danger}cc`;
+          ctx.lineWidth = 1;
+          roundRect(ctx, x, y, barW, vH, 2);
+          ctx.stroke();
+        }
+      }
+
+      const firstLabel = formatChinaDateTime(points[0] && points[0].bucketAt).slice(granularityMin >= 360 ? 5 : 11, 16);
+      const lastLabel = formatChinaDateTime(points[points.length - 1] && points[points.length - 1].bucketAt).slice(granularityMin >= 360 ? 5 : 11, 16);
+      ctx.fillStyle = THEME.muted;
+      ctx.font = "12px Segoe UI";
+      ctx.fillText(firstLabel, stripLeft, h - 10);
+      ctx.textAlign = "right";
+      ctx.fillText(lastLabel, stripLeft + stripW, h - 10);
+      ctx.textAlign = "left";
+      ctx.fillStyle = THEME.muted;
+      ctx.font = "11px Segoe UI";
+      ctx.fillText(`总请求 ${compact(overallReq)} | 总失败 ${compact(overallFail)} | 告警点 ${compact(series.filter((p) => {
+        const req = Math.max(1, num(p.requests || 0));
+        return Math.max(0, num(p.failed || 0)) / req > failThreshold;
+      }).length, 0)}`, stripLeft, 14);
+      ctx.textAlign = "right";
+      ctx.fillStyle = THEME.muted;
+      ctx.fillText("绿=健康  黄=预警  红=风险", stripLeft + stripW, 14);
+      ctx.textAlign = "left";
+    }
+
+    function drawSuccessFailStacked(points) {
+      const { ctx, w, h } = setupCanvas("successFailCanvas");
+      if (!points.length) {
+        ctx.fillStyle = THEME.muted;
+        ctx.font = "13px Segoe UI";
+        ctx.fillText("暂无趋势数据", 16, 26);
+        return;
+      }
+      const bars = points.slice(-24).map((p) => {
+        const req = num(p.requests || 0);
+        const succ = Math.max(0, Math.round(req * num(p.success_rate || 0)));
+        const fail = Math.max(0, req - succ);
+        return { req, succ, fail };
+      });
+      const maxReq = Math.max(...bars.map((b) => b.req), 1);
+      const left = 40, right = 14, top = 16, bottom = 24;
+      const cw = w - left - right, ch = h - top - bottom;
+      const bw = Math.max(3, Math.floor(cw / bars.length) - 2);
+      ctx.strokeStyle = THEME.line;
+      ctx.strokeRect(left, top, cw, ch);
+      for (let i = 1; i <= 3; i++) {
+        const y = top + (ch * i / 4);
+        ctx.strokeStyle = THEME.gridSoft;
+        ctx.beginPath();
+        ctx.moveTo(left, y);
+        ctx.lineTo(left + cw, y);
+        ctx.stroke();
+      }
+      bars.forEach((b, i) => {
+        const x = left + Math.floor(i * cw / bars.length) + 1;
+        const totalH = Math.max(1, Math.round((b.req / maxReq) * ch));
+        const failH = b.req ? Math.round((b.fail / b.req) * totalH) : 0;
+        const succH = totalH - failH;
+        const yBase = top + ch;
+        ctx.fillStyle = THEME.good;
+        ctx.fillRect(x, yBase - succH, bw, succH);
+        if (failH > 0) {
+          ctx.fillStyle = THEME.danger;
+          ctx.fillRect(x, yBase - totalH, bw, failH);
+        }
+      });
+      ctx.fillStyle = THEME.text;
+      ctx.font = "12px Segoe UI";
+      ctx.fillText("绿色=成功  红色=失败", left, 12);
+      ctx.textAlign = "right";
+      ctx.fillText(`峰值 ${compact(maxReq)} 请求`, left + cw, 12);
+      ctx.textAlign = "left";
+    }
+
+    function drawHourlyHeat(records) {
+      const { ctx, w, h } = setupCanvas("hourlyHeatCanvas");
+      const now = new Date();
+      const buckets = [];
+      for (let i = 23; i >= 0; i--) {
+        const d = new Date(now.getTime() - i * 3600 * 1000);
+        buckets.push({
+          key: chinaHourKey(d),
+          hour: chinaHour(d),
+          req: 0,
+          fail: 0
+        });
+      }
+      const map = new Map(buckets.map((b) => [b.key, b]));
+      for (const r of records) {
+        const key = chinaHourKey(r.fetched_at);
+        if (!key) continue;
+        const b = map.get(key);
+        if (!b) continue;
+        b.req += num(r.requests || 0);
+        b.fail += num(r.failed || 0);
+      }
+      const maxReq = Math.max(...buckets.map((b) => b.req), 1);
+      const left = 28, right = 12, top = 22, bottom = 30;
+      const cw = w - left - right, ch = h - top - bottom;
+      const cellW = cw / 24;
+      for (let i = 0; i < 24; i++) {
+        const b = buckets[i];
+        const rate = maxReq ? (b.req / maxReq) : 0;
+        const hue = 202 - Math.round(rate * 34);
+        const light = 96 - Math.round(rate * 36);
+        ctx.fillStyle = `hsl(${hue} 74% ${light}%)`;
+        const x = left + i * cellW;
+        roundRect(ctx, x + 1, top + 1, Math.max(1, cellW - 2), ch - 2, 2);
+        ctx.fill();
+        if (i % 4 === 0) {
+          ctx.fillStyle = THEME.muted;
+          ctx.font = "10px Segoe UI";
+          ctx.textAlign = "center";
+          ctx.fillText(String(b.hour).padStart(2, "0"), x + cellW / 2, h - 10);
+        }
+      }
+      ctx.strokeStyle = THEME.line;
+      ctx.strokeRect(left, top, cw, ch);
+      ctx.textAlign = "left";
+      ctx.fillStyle = THEME.text;
+      ctx.font = "12px Segoe UI";
+      const sumReq = buckets.reduce((s, b) => s + b.req, 0);
+      const sumFail = buckets.reduce((s, b) => s + b.fail, 0);
+      const fr = sumReq ? (sumFail / sumReq) * 100 : 0;
+      ctx.fillText(`CST近24小时请求 ${compact(sumReq)}，失败率 ${fr.toFixed(2)}%`, left, 14);
+    }
+
+    async function loadStats() {
+      const h = num($("hours").value || 24);
+      const kw = $("keyword").value.trim();
+      const pid = state.activeProfileId || 0;
+      const d = await api(`/api/stats?hours=${encodeURIComponent(h)}&keyword=${encodeURIComponent(kw)}&profile_id=${encodeURIComponent(pid)}`);
+      state.statsRows = d.data.rows || [];
+      const map = aggregateQuotaRows(state.statsRows);
+      const rows = [...map.values()]
+        .map((x) => ({
+          key: x.key,
+          auth: x.auth,
+          requests: x.requests,
+          totalTokens: x.totalTokens,
+          failed: x.failed,
+          successRate: x.requests > 0 ? (x.success / x.requests) : 0,
+          sourceCount: x.sourceSet.size,
+          keyCount: x.keySet.size
+        }))
+        .filter((x) => num(x.requests) > 0 || num(x.totalTokens) > 0)
+        .sort((a, b) => (num(b.requests) - num(a.requests)) || (num(b.totalTokens) - num(a.totalTokens)));
+      state.authQuotaRows = rows;
+      state.authQuotaUpdatedAt = new Date();
+      renderAuthQuota();
+      refreshHealthSourceOptions();
+      renderStats(d.data.summary || {});
+      drawProviderPie(state.statsRows);
+      drawModelTopBar(state.statsRows);
+      drawSourceResultMonitor();
+    }
+
+    async function loadTrend() {
+      const h = num($("hours").value || 24);
+      const limit = num($("trendLimit").value || 200);
+      const pid = state.activeProfileId || 0;
+      const d = await api(`/api/trend?hours=${encodeURIComponent(h)}&limit=${encodeURIComponent(limit)}&profile_id=${encodeURIComponent(pid)}`);
+      state.trendPoints = (d.data && d.data.points) || [];
+      drawTrend(state.trendPoints);
+      drawSuccessFailStacked(state.trendPoints);
+    }
+
+    async function loadRecords() {
+      const h = num($("hours").value || 24);
+      const kw = $("keyword").value.trim();
+      const pid = state.activeProfileId || 0;
+      const limit = num($("recordLimit").value || 300);
+      const d = await api(`/api/records?hours=${encodeURIComponent(h)}&keyword=${encodeURIComponent(kw)}&profile_id=${encodeURIComponent(pid)}&limit=${encodeURIComponent(limit)}`);
+      state.recordRows = d.data || [];
+      renderRecords();
+      drawHourlyHeat(state.recordRows);
+      drawSourceResultMonitor();
+    }
+
+    async function loadLogs() {
+      const d = await api(`/api/logs?limit=8&profile_id=${encodeURIComponent(state.activeProfileId || 0)}`);
+      const lines = [];
+      for (const item of (d.data || [])) {
+        lines.push(`[${formatChinaDateTime(item.fetched_at)}] ok=${item.ok} source=${item.source} msg=${item.message}`);
+        for (const t of (item.traces || [])) lines.push(`  - ${t.label} ${t.status} ${t.ms}ms ${t.url}`);
+      }
+      $("logs").textContent = lines.join("\n") || "暂无日志";
+    }
+
+    async function reloadData() {
+      saveView();
+      await Promise.all([loadHealth(), loadStats(), loadTrend(), loadRecords(), loadLogs()]);
+      updateLastRefreshText();
+    }
+
+    async function triggerRefresh() {
+      setStatus("拉取中...");
+      const d = await api("/api/refresh", { method: "POST" });
+      setStatus(d.message || "拉取完成。");
+      await reloadData();
+    }
+
+    function toCsv(rows, header) {
+      const quote = (v) => {
+        const s = String(v ?? "");
+        return /[,"\n]/.test(s) ? `"${s.replace(/"/g, "\"\"")}"` : s;
+      };
+      const lines = [header.join(",")];
+      for (const row of rows) lines.push(header.map((k) => quote(row[k])).join(","));
+      return lines.join("\n");
+    }
+
+    function downloadCsv(filename, content) {
+      const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function exportStatsCsv() {
+      const rows = sortRows(state.statsRows, state.sortStats);
+      if (!rows.length) { setStatus("暂无模型统计可导出。", "warn"); return; }
+      const data = rows.map((r) => ({
+        渠道: r.provider, 模型: r.model, 别名: r.alias, 来源账号: r.source, 授权账号: r.auth_account || "-", 对外Key: r.external_key || "-",
+        请求: r.requests, 成功: r.success, 失败: r.failed, 成功率: `${(r.success_rate * 100).toFixed(2)}%`,
+        输入令牌: r.input_tokens, 输出令牌: r.output_tokens, 推理令牌: r.reasoning_tokens, 总令牌: r.total_tokens,
+        平均耗时ms: Math.round(r.avg_latency_ms || 0), 最小耗时ms: Math.round(r.min_latency_ms || 0), 最大耗时ms: Math.round(r.max_latency_ms || 0)
+      }));
+      downloadCsv(`cpa-模型统计-${Date.now()}.csv`, toCsv(data, Object.keys(data[0])));
+      setStatus("模型统计 CSV 已导出。");
+    }
+
+    function exportRecordsCsv() {
+      const linked = state.recordLink;
+      const rows = sortRows(linked
+        ? (state.recordRows || []).filter((r) => {
+          const source = String(r.source || r.auth_account || "-");
+          if (source !== linked.source) return false;
+          const d = parseDateSafe(r.fetched_at);
+          if (!d) return false;
+          const t = d.getTime();
+          return t >= linked.startMs && t < linked.endMs;
+        })
+        : (state.recordRows || []), state.sortRecords);
+      if (!rows.length) { setStatus("暂无明细可导出。", "warn"); return; }
+      downloadCsv(`cpa-调用明细-${Date.now()}.csv`, toCsv(rows, Object.keys(rows[0])));
+      setStatus("明细 CSV 已导出。");
+    }
+
+    function toggleSort(which, key) {
+      const target = which === "stats" ? state.sortStats : state.sortRecords;
+      if (target.key === key) target.dir = target.dir === "asc" ? "desc" : "asc";
+      else { target.key = key; target.dir = "desc"; }
+      if (which === "stats") {
+        state.statsPage = 1;
+        renderStats(state.statsSummary);
+      } else {
+        state.recordsPage = 1;
+        renderRecords();
+      }
+    }
+
+    function applyUiAutoRefresh() {
+      if (state.uiTimer) clearInterval(state.uiTimer);
+      state.uiTimer = null;
+    }
+
+    document.querySelectorAll("th[data-key]").forEach((th) => {
+      th.addEventListener("click", () => toggleSort("stats", th.getAttribute("data-key")));
+    });
+    document.querySelectorAll("th[data-rec-key]").forEach((th) => {
+      th.addEventListener("click", () => toggleSort("records", th.getAttribute("data-rec-key")));
+    });
+
+    $("reloadViewBtn").addEventListener("click", () => reloadData().catch((e) => setStatus(`刷新失败: ${e.message}`, "error")));
+    $("refreshBtn").addEventListener("click", () => triggerRefresh().catch((e) => setStatus(`拉取失败: ${e.message}`, "error")));
+    $("exportStatsBtn").addEventListener("click", exportStatsCsv);
+    $("exportRecordsBtn").addEventListener("click", exportRecordsCsv);
+    $("themeMode").addEventListener("change", () => {
+      applyTheme($("themeMode").value);
+      redrawAfterThemeChange();
+    });
+    $("themeLightBtn").addEventListener("click", () => {
+      $("themeMode").value = "light";
+      applyTheme("light");
+      redrawAfterThemeChange();
+    });
+    $("themeDarkBtn").addEventListener("click", () => {
+      $("themeMode").value = "dark";
+      applyTheme("dark");
+      redrawAfterThemeChange();
+    });
+    $("themeAutoBtn").addEventListener("click", () => {
+      $("themeMode").value = "auto";
+      applyTheme("auto");
+      redrawAfterThemeChange();
+    });
+    $("healthSourceSelect").addEventListener("change", (e) => {
+      state.healthSource = e.target.value || AUTO_HEALTH_SOURCE;
+      saveView();
+      drawSourceResultMonitor();
+    });
+    $("healthGranularity").addEventListener("change", (e) => {
+      state.healthGranularityMin = Math.max(1, num(e.target.value || 60));
+      saveView();
+      drawSourceResultMonitor();
+    });
+    $("healthFailThreshold").addEventListener("change", (e) => {
+      state.healthFailThreshold = Math.max(0.001, Math.min(0.5, num(e.target.value || 0.05)));
+      saveView();
+      drawSourceResultMonitor();
+    });
+    $("healthAlertsOnly").addEventListener("change", (e) => {
+      state.healthAlertsOnly = !!e.target.checked;
+      saveView();
+      drawSourceResultMonitor();
+    });
+    $("sourceResultCanvas").addEventListener("mousemove", (e) => {
+      const canvas = $("sourceResultCanvas");
+      const bar = (state.healthBars || []).find((b) => e.offsetX >= b.x && e.offsetX <= (b.x + b.w) && e.offsetY >= b.y && e.offsetY <= (b.y + b.h));
+      if (!bar) {
+        canvas.style.cursor = "default";
+        hideHealthTooltip();
+        return;
+      }
+      canvas.style.cursor = "pointer";
+      showHealthTooltip(e, bar);
+    });
+    $("sourceResultCanvas").addEventListener("mouseleave", () => {
+      $("sourceResultCanvas").style.cursor = "default";
+      hideHealthTooltip();
+    });
+    $("sourceResultCanvas").addEventListener("click", (e) => {
+      const bar = (state.healthBars || []).find((b) => e.offsetX >= b.x && e.offsetX <= (b.x + b.w) && e.offsetY >= b.y && e.offsetY <= (b.y + b.h));
+      if (!bar) return;
+      const startMs = num(bar.data.bucketAt);
+      const granMs = Math.max(1, num(state.healthGranularityMin || 60)) * 60 * 1000;
+      state.recordLink = {
+        source: bar.source || "-",
+        startMs,
+        endMs: startMs + granMs
+      };
+      state.recordsPage = 1;
+      renderRecords();
+      setStatus(`已联动到来源账号 ${state.recordLink.source} 的时间桶明细。`);
+    });
+    $("clearRecordLinkBtn").addEventListener("click", () => {
+      state.recordLink = null;
+      state.recordsPage = 1;
+      renderRecords();
+      setStatus("已清除图表联动过滤。");
+    });
+    $("statsPageSize").addEventListener("change", () => { state.statsPage = 1; saveView(); renderStats(state.statsSummary); });
+    $("recordsPageSize").addEventListener("change", () => { state.recordsPage = 1; saveView(); renderRecords(); });
+    $("statsPrevBtn").addEventListener("click", () => { state.statsPage = Math.max(1, state.statsPage - 1); renderStats(state.statsSummary); });
+    $("statsNextBtn").addEventListener("click", () => { state.statsPage += 1; renderStats(state.statsSummary); });
+    $("recordsPrevBtn").addEventListener("click", () => { state.recordsPage = Math.max(1, state.recordsPage - 1); renderRecords(); });
+    $("recordsNextBtn").addEventListener("click", () => { state.recordsPage += 1; renderRecords(); });
+
+    ["hours", "keyword", "metric", "trendLimit", "recordLimit"].forEach((id) => $(id).addEventListener("change", saveView));
+    $("uiRefreshSec").addEventListener("change", () => {
+      state.uiRefreshFollowBackend = true;
+      $("uiRefreshSec").value = "0";
+      saveView();
+      applyUiAutoRefresh();
+    });
+    $("metric").addEventListener("change", () => loadTrend().catch(() => {}));
+    window.addEventListener("resize", () => {
+      loadTrend().catch(() => {});
+      drawProviderPie(state.statsRows);
+      drawModelTopBar(state.statsRows);
+      drawSourceResultMonitor();
+      drawSuccessFailStacked(state.trendPoints || []);
+      drawHourlyHeat(state.recordRows || []);
+    });
+
+    setInterval(() => updateCountdownLine(), 1000);
+    setInterval(() => loadHealth({ fromPolling: true }).catch(() => {}), 5000);
+    if (window.matchMedia) {
+      const media = window.matchMedia("(prefers-color-scheme: dark)");
+      const onSystemTheme = () => {
+        const mode = (() => {
+          try { return localStorage.getItem(THEME_KEY) || "auto"; } catch (_) { return "auto"; }
+        })();
+        if (mode === "auto") {
+          applyTheme("auto");
+          redrawAfterThemeChange();
+        }
+      };
+      if (media.addEventListener) media.addEventListener("change", onSystemTheme);
+      else if (media.addListener) media.addListener(onSystemTheme);
+    }
+
+    (async function init() {
+      try {
+        const mode = (() => {
+          try { return localStorage.getItem(THEME_KEY) || "auto"; } catch (_) { return "auto"; }
+        })();
+        applyTheme(mode);
+        loadView();
+        applyUiAutoRefresh();
+        await reloadData();
+        setStatus("就绪。");
+      } catch (e) {
+        setStatus(`初始化失败: ${e.message}`, "error");
+      }
+    })();
+  </script>
+</body>
+</html>
+
+

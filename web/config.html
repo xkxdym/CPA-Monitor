@@ -1,0 +1,569 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CPA监控 - 配置</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --bg-top: #eaf2ff;
+      --bg-orb-a: rgba(14, 165, 233, 0.12);
+      --bg-orb-b: rgba(20, 184, 166, 0.12);
+      --panel: #fff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --line-strong: #cbd5e1;
+      --input-bg: #fff;
+      --input-text: #111827;
+      --ghost-bg: #e2e8f0;
+      --ghost-text: #334155;
+      --danger-bg: #fee2e2;
+      --danger-text: #991b1b;
+      --pill-bg: #f8fafc;
+      --card-shadow: 0 4px 20px rgba(2, 6, 23, 0.06);
+      --accent: #0f766e;
+      --warn: #b45309;
+      --bad: #b91c1c;
+    }
+    [data-theme="dark"] {
+      --bg: #0b1220;
+      --bg-top: #0f1b33;
+      --bg-orb-a: rgba(56, 189, 248, 0.14);
+      --bg-orb-b: rgba(45, 212, 191, 0.14);
+      --panel: #0f172a;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --line: #243247;
+      --line-strong: #334155;
+      --input-bg: #111c30;
+      --input-text: #e2e8f0;
+      --ghost-bg: #1d2a3f;
+      --ghost-text: #cbd5e1;
+      --danger-bg: #3a1b24;
+      --danger-text: #fca5a5;
+      --pill-bg: #111c30;
+      --card-shadow: 0 8px 26px rgba(2, 6, 23, 0.45);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(1200px 500px at 8% -10%, var(--bg-orb-a), transparent 62%),
+        radial-gradient(1000px 420px at 92% -16%, var(--bg-orb-b), transparent 60%),
+        linear-gradient(180deg, var(--bg-top) 0, var(--bg) 220px);
+      color: var(--text);
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+    .wrap { max-width: 1240px; margin: 22px auto 40px; padding: 0 16px; }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: var(--card-shadow);
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+    h1 { margin: 2px 0 10px; font-size: 22px; }
+    a { color: var(--accent); }
+    a:hover { opacity: 0.9; }
+    .sub { color: var(--muted); font-size: 13px; margin-bottom: 12px; }
+    .small { color: var(--muted); font-size: 12px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 10px;
+      align-items: end;
+    }
+    .field { grid-column: span 12; }
+    .field.sm { grid-column: span 3; }
+    .field.md { grid-column: span 6; }
+    .field label { display: block; margin-bottom: 6px; color: var(--muted); font-size: 12px; }
+    .field input, .field select {
+      width: 100%;
+      height: 38px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      padding: 0 10px;
+      font-size: 14px;
+      background: var(--input-bg);
+      color: var(--input-text);
+    }
+    .field input::placeholder { color: var(--muted); }
+    .actions { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; }
+    button {
+      border: 0;
+      border-radius: 8px;
+      height: 36px;
+      padding: 0 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.15s ease, opacity 0.15s ease;
+    }
+    button:hover { transform: translateY(-1px); }
+    button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-ghost { background: var(--ghost-bg); color: var(--ghost-text); border: 1px solid var(--line); }
+    .btn-danger { background: var(--danger-bg); color: var(--danger-text); border: 1px solid var(--line); }
+    .btn-mini { height: 28px; padding: 0 10px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+    .inline-input {
+      width: 100%;
+      height: 28px;
+      border: 1px solid var(--line-strong);
+      border-radius: 6px;
+      padding: 0 8px;
+      font-size: 12px;
+      background: var(--input-bg);
+      color: var(--input-text);
+    }
+    .status { margin-top: 8px; min-height: 18px; font-size: 13px; color: var(--muted); white-space: pre-wrap; }
+    .pill {
+      display: inline-block;
+      border: 1px solid var(--line-strong);
+      border-radius: 999px;
+      padding: 4px 10px;
+      margin-right: 8px;
+      background: var(--pill-bg);
+      font-size: 12px;
+      color: var(--text);
+    }
+    .theme-switch {
+      margin-left: 8px;
+      height: 30px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: var(--input-bg);
+      color: var(--input-text);
+      padding: 0 8px;
+      font-size: 12px;
+    }
+    .table-wrap { border: 1px solid var(--line); border-radius: 10px; overflow: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { border-bottom: 1px solid var(--line); text-align: left; padding: 8px 6px; vertical-align: middle; }
+    th { background: var(--pill-bg); font-size: 12px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .active { color: #0f766e; font-weight: 700; }
+    @media (max-width: 900px) { .field.sm, .field.md { grid-column: span 12; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>CPA监控 - 配置</h1>
+      <div class="sub" style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+        <a href="/">返回监控页</a>
+        <select id="themeMode" class="theme-switch" title="主题模式">
+          <option value="auto">跟随系统</option>
+          <option value="light">浅色</option>
+          <option value="dark">夜间</option>
+        </select>
+      </div>
+      <span class="pill">当前配置：<span id="activeTag">-</span></span>
+      <span class="pill">配置总数：<span id="profileCount">0</span></span>
+    </div>
+
+    <div class="card">
+      <div class="grid">
+        <div class="field md">
+          <label>配置档列表（切换后立即生效）</label>
+          <select id="profileSelect"></select>
+        </div>
+        <div class="field sm">
+          <label>配置档名称</label>
+          <input id="profileName" placeholder="例如 prod-cn" />
+        </div>
+        <div class="field sm">
+          <label>状态</label>
+          <select id="profileEnabled"><option value="1">启用</option><option value="0">停用</option></select>
+        </div>
+        <div class="field md">
+          <label>管理 API 根地址</label>
+          <input id="baseUrl" placeholder="https://your-router-domain" />
+        </div>
+        <div class="field md">
+          <label>Bearer Token（留空=不修改已有 token）</label>
+          <input id="token" type="password" placeholder="Authorization: Bearer ..." />
+        </div>
+        <div class="field sm">
+          <label>端点模式</label>
+          <select id="endpointMode"><option value="auto">auto</option><option value="queue">queue</option><option value="legacy">legacy</option></select>
+        </div>
+        <div class="field sm">
+          <label>队列条数</label>
+          <input id="queueCount" type="number" min="1" max="10000" value="300" />
+        </div>
+      </div>
+      <div class="actions">
+        <button id="newProfileBtn" class="btn-ghost">新建草稿</button>
+        <button id="saveProfileBtn" class="btn-primary">保存配置档</button>
+        <button id="deleteProfileBtn" class="btn-danger">删除当前配置档</button>
+      </div>
+      <div class="small" id="profileHint" style="margin-top:8px;"></div>
+    </div>
+
+    <div class="card">
+      <div class="grid" style="margin-bottom:8px;">
+        <div class="field md">
+          <label>配置档过滤</label>
+          <input id="profileFilter" placeholder="按名称、地址、模式过滤" />
+        </div>
+        <div class="field sm">
+          <label>刷新总览</label>
+          <div class="actions" style="margin-top:0;">
+            <button id="reloadProfilesBtn" class="btn-ghost">刷新列表</button>
+          </div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>编号</th>
+              <th>名称</th>
+              <th>状态</th>
+              <th>接口地址</th>
+              <th>端点模式</th>
+              <th>队列条数</th>
+              <th>令牌状态</th>
+              <th>更新时间</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="profilesTbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="grid">
+        <div class="field sm"><label>自动刷新间隔（秒）</label><input id="intervalSec" type="number" min="5" value="60" /></div>
+        <div class="field sm"><label>开启自动刷新</label><select id="autoEnabled"><option value="1">是</option><option value="0">否</option></select></div>
+        <div class="field sm"><label>默认统计窗口（小时）</label><input id="hours" type="number" min="1" max="2160" value="24" /></div>
+        <div class="field sm"><label>保留天数（自动清理）</label><input id="retentionDays" type="number" min="1" max="3650" value="30" /></div>
+      </div>
+      <div class="actions">
+        <button id="saveGlobalBtn" class="btn-primary">保存全局配置</button>
+        <button id="pruneBtn" class="btn-ghost">立即清理过期数据</button>
+        <button id="clearBtn" class="btn-danger">清空全部缓存</button>
+      </div>
+      <div class="status" id="status"></div>
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const THEME_KEY = "cpa_theme_mode_v1";
+    const state = { profiles: [], activeProfileId: 0, editingProfileId: 0, inlineEditId: 0 };
+    const num = (v) => Number.isFinite(Number(v)) ? Number(v) : 0;
+    const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c]));
+
+    function systemTheme() {
+      return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+
+    function applyTheme(mode = "auto") {
+      const effective = mode === "auto" ? systemTheme() : mode;
+      document.documentElement.setAttribute("data-theme", effective);
+      const sel = $("themeMode");
+      if (sel && sel.value !== mode) sel.value = mode;
+      try {
+        localStorage.setItem(THEME_KEY, mode);
+      } catch (_) {}
+    }
+
+    function setStatus(msg, level = "info") {
+      const el = $("status");
+      el.textContent = msg;
+      el.style.color = level === "error" ? "var(--bad)" : level === "warn" ? "var(--warn)" : "var(--muted)";
+    }
+
+    async function api(path, opts = {}) {
+      const r = await fetch(path, opts);
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || d.ok === false) throw new Error(d.message || `${r.status} ${r.statusText}`);
+      return d;
+    }
+
+    function activeProfile() {
+      return state.profiles.find((p) => Number(p.id) === Number(state.activeProfileId)) || null;
+    }
+
+    function renderProfileOptions() {
+      $("profileSelect").innerHTML = state.profiles.map((p) => {
+        const suffix = p.has_token ? "" : " (未配置令牌)";
+        return `<option value="${p.id}">${esc(p.name)}${suffix}</option>`;
+      }).join("");
+      if (state.activeProfileId) $("profileSelect").value = String(state.activeProfileId);
+      const ap = activeProfile();
+      $("activeTag").textContent = ap ? `${ap.name} (#${ap.id})` : "-";
+      $("profileCount").textContent = String(state.profiles.length);
+      $("profileHint").textContent = ap
+        ? `当前 active: ${ap.name} | ${ap.base_url || "(空地址)"} | mode=${ap.endpoint_mode} | queue=${ap.queue_count}`
+         : "当前没有可用配置档";
+    }
+
+    function fillProfileForm(profile) {
+      if (!profile) return;
+      state.editingProfileId = Number(profile.id || 0);
+      $("profileName").value = profile.name || "";
+      $("baseUrl").value = profile.base_url || "";
+      $("token").value = "";
+      $("endpointMode").value = profile.endpoint_mode || "auto";
+      $("queueCount").value = profile.queue_count || 300;
+      $("profileEnabled").value = profile.is_enabled ? "1" : "0";
+    }
+
+    function renderProfilesTable() {
+      const activeId = Number(state.activeProfileId || 0);
+      const kw = ($("profileFilter").value || "").trim().toLowerCase();
+      const filtered = !kw ? state.profiles : state.profiles.filter((p) => `${p.name} ${p.base_url} ${p.endpoint_mode}`.toLowerCase().includes(kw));
+      $("profilesTbody").innerHTML = filtered.map((p) => {
+        const inline = Number(state.inlineEditId) === Number(p.id);
+        if (!inline) {
+          return `
+            <tr>
+              <td class="mono">${p.id}</td>
+              <td class="${Number(p.id) === activeId ? "active" : ""}">${esc(p.name)}</td>
+              <td>${p.is_enabled ? "启用" : "停用"}</td>
+              <td class="mono">${esc(p.base_url || "-")}</td>
+              <td>${esc(p.endpoint_mode)}</td>
+              <td>${p.queue_count}</td>
+              <td>${p.has_token ? "已配置" : "未配置"}</td>
+              <td class="mono">${esc(p.updated_at || "-")}</td>
+              <td>
+                <button class="btn-ghost btn-mini" data-act="edit" data-id="${p.id}">编辑</button>
+                <button class="btn-ghost btn-mini" data-act="active" data-id="${p.id}">设为Active</button>
+                <button class="btn-danger btn-mini" data-act="delete" data-id="${p.id}">删除</button>
+              </td>
+            </tr>
+          `;
+        }
+        return `
+          <tr>
+            <td class="mono">${p.id}</td>
+            <td><input class="inline-input" data-inline="name" data-id="${p.id}" value="${esc(p.name)}" /></td>
+            <td>
+              <select class="inline-input" data-inline="is_enabled" data-id="${p.id}">
+                <option value="1" ${p.is_enabled ? "selected" : ""}>启用</option>
+                <option value="0" ${p.is_enabled ? "" : "selected"}>停用</option>
+              </select>
+            </td>
+            <td><input class="inline-input mono" data-inline="base_url" data-id="${p.id}" value="${esc(p.base_url || "")}" /></td>
+            <td>
+              <select class="inline-input" data-inline="endpoint_mode" data-id="${p.id}">
+                <option value="auto" ${p.endpoint_mode === "auto" ? "selected" : ""}>auto</option>
+                <option value="queue" ${p.endpoint_mode === "queue" ? "selected" : ""}>queue</option>
+                <option value="legacy" ${p.endpoint_mode === "legacy" ? "selected" : ""}>legacy</option>
+              </select>
+            </td>
+            <td><input class="inline-input" data-inline="queue_count" data-id="${p.id}" type="number" min="1" max="10000" value="${p.queue_count}" /></td>
+            <td>${p.has_token ? "已配置" : "未配置"}</td>
+            <td class="mono">${esc(p.updated_at || "-")}</td>
+            <td>
+              <button class="btn-primary btn-mini" data-act="save-inline" data-id="${p.id}">保存</button>
+              <button class="btn-ghost btn-mini" data-act="cancel-inline" data-id="${p.id}">取消</button>
+            </td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    async function loadAll() {
+      const [cfgData, pData] = await Promise.all([api("/api/config"), api("/api/profiles")]);
+      const cfg = cfgData.config || {};
+      state.profiles = pData.profiles || [];
+      state.activeProfileId = Number(pData.active_profile_id || cfg.active_profile_id || 0);
+      state.editingProfileId = state.activeProfileId;
+      state.inlineEditId = 0;
+      $("intervalSec").value = cfg.refresh_interval_sec || 60;
+      $("autoEnabled").value = cfg.auto_refresh_enabled ? "1" : "0";
+      $("hours").value = cfg.lookback_hours || 24;
+      $("retentionDays").value = cfg.retention_days || 30;
+      renderProfileOptions();
+      fillProfileForm(activeProfile());
+      renderProfilesTable();
+    }
+
+    async function saveGlobal() {
+      await api("/api/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          active_profile_id: Number(state.activeProfileId || 0),
+          refresh_interval_sec: num($("intervalSec").value || 60),
+          auto_refresh_enabled: num($("autoEnabled").value || 0),
+          lookback_hours: num($("hours").value || 24),
+          retention_days: num($("retentionDays").value || 30)
+        })
+      });
+      setStatus("全局配置已保存。");
+    }
+
+    async function saveProfile() {
+      const payload = {
+        id: state.editingProfileId || 0,
+        name: $("profileName").value.trim(),
+        base_url: $("baseUrl").value.trim(),
+        token: $("token").value.trim(),
+        endpoint_mode: $("endpointMode").value,
+        queue_count: num($("queueCount").value || 300),
+        is_enabled: num($("profileEnabled").value || 1),
+        set_active: true
+      };
+      const d = await api("/api/profiles/upsert", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      await api("/api/profiles/select", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: d.profile_id })
+      });
+      setStatus("配置档已保存并切换为 active。");
+      await loadAll();
+    }
+
+    async function deleteProfile(id) {
+      const pid = Number(id || state.activeProfileId || 0);
+      if (!pid) throw new Error("无效的配置档编号");
+      if (!confirm(`确认删除配置档 #${pid} 吗？`)) return;
+      await api("/api/profiles/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: pid })
+      });
+      setStatus("配置档已删除。", "warn");
+      await loadAll();
+    }
+
+    async function selectProfile(id) {
+      const pid = Number(id || 0);
+      await api("/api/profiles/select", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: pid })
+      });
+      state.activeProfileId = pid;
+      state.editingProfileId = pid;
+      fillProfileForm(activeProfile());
+      renderProfileOptions();
+      renderProfilesTable();
+      setStatus("已切换 active 配置档。");
+    }
+
+    function startInlineEdit(id) {
+      state.inlineEditId = Number(id || 0);
+      renderProfilesTable();
+      setStatus(`已进入行内编辑 #${state.inlineEditId}`);
+    }
+
+    function cancelInlineEdit() {
+      state.inlineEditId = 0;
+      renderProfilesTable();
+      setStatus("已取消行内编辑。");
+    }
+
+    async function saveInlineEdit(id) {
+      const pid = Number(id || 0);
+      if (!pid) throw new Error("无效的配置档编号");
+      const pick = (k) => {
+        const el = document.querySelector(`[data-inline="${k}"][data-id="${pid}"]`);
+        return el ? el.value : "";
+      };
+      await api("/api/profiles/upsert", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: pid,
+          name: pick("name").trim(),
+          base_url: pick("base_url").trim(),
+          endpoint_mode: pick("endpoint_mode"),
+          queue_count: num(pick("queue_count") || 300),
+          is_enabled: num(pick("is_enabled") || 1)
+        })
+      });
+      state.inlineEditId = 0;
+      setStatus(`配置档 #${pid} 已更新。`);
+      await loadAll();
+    }
+
+    function newDraft() {
+      state.editingProfileId = 0;
+      $("profileName").value = "";
+      $("baseUrl").value = "";
+      $("token").value = "";
+      $("endpointMode").value = "auto";
+      $("queueCount").value = 300;
+      $("profileEnabled").value = "1";
+      setStatus("已切到新建草稿。");
+    }
+
+    async function prune() {
+      const d = await api("/api/cache/prune", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ retention_days: num($("retentionDays").value || 30) })
+      });
+      const s = d.data || {};
+      setStatus(`清理完成：usage=${s.usage_records || 0}, snapshots=${s.pull_snapshots || 0}, logs=${s.pull_logs || 0}`);
+    }
+
+    async function clearAll() {
+      await api("/api/cache/clear", { method: "POST" });
+      setStatus("缓存已清空。", "warn");
+    }
+
+    $("profileSelect").addEventListener("change", (e) => selectProfile(e.target.value).catch((er) => setStatus(`切换失败: ${er.message}`, "error")));
+    $("profileFilter").addEventListener("input", renderProfilesTable);
+    $("reloadProfilesBtn").addEventListener("click", () => loadAll().catch((e) => setStatus(`刷新列表失败: ${e.message}`, "error")));
+    $("newProfileBtn").addEventListener("click", newDraft);
+    $("saveProfileBtn").addEventListener("click", () => saveProfile().catch((e) => setStatus(`保存配置档失败: ${e.message}`, "error")));
+    $("deleteProfileBtn").addEventListener("click", () => deleteProfile().catch((e) => setStatus(`删除配置档失败: ${e.message}`, "error")));
+    $("saveGlobalBtn").addEventListener("click", () => saveGlobal().catch((e) => setStatus(`保存全局配置失败: ${e.message}`, "error")));
+    $("pruneBtn").addEventListener("click", () => prune().catch((e) => setStatus(`清理失败: ${e.message}`, "error")));
+    $("clearBtn").addEventListener("click", () => clearAll().catch((e) => setStatus(`清空失败: ${e.message}`, "error")));
+    $("themeMode").addEventListener("change", () => applyTheme($("themeMode").value));
+    $("profilesTbody").addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-act]");
+      if (!btn) return;
+      const act = btn.getAttribute("data-act");
+      const id = Number(btn.getAttribute("data-id") || 0);
+      if (!id) return;
+      if (act === "edit") startInlineEdit(id);
+      else if (act === "active") selectProfile(id).catch((er) => setStatus(`切换失败: ${er.message}`, "error"));
+      else if (act === "delete") deleteProfile(id).catch((er) => setStatus(`删除失败: ${er.message}`, "error"));
+      else if (act === "save-inline") saveInlineEdit(id).catch((er) => setStatus(`保存失败: ${er.message}`, "error"));
+      else if (act === "cancel-inline") cancelInlineEdit();
+    });
+    if (window.matchMedia) {
+      const media = window.matchMedia("(prefers-color-scheme: dark)");
+      const onSystemTheme = () => {
+        const mode = (() => {
+          try { return localStorage.getItem(THEME_KEY) || "auto"; } catch (_) { return "auto"; }
+        })();
+        if (mode === "auto") applyTheme("auto");
+      };
+      if (media.addEventListener) media.addEventListener("change", onSystemTheme);
+      else if (media.addListener) media.addListener(onSystemTheme);
+    }
+
+    (async function init() {
+      try {
+        const mode = (() => {
+          try { return localStorage.getItem(THEME_KEY) || "auto"; } catch (_) { return "auto"; }
+        })();
+        applyTheme(mode);
+        await loadAll();
+        setStatus("就绪。");
+      } catch (e) {
+        setStatus(`初始化失败: ${e.message}`, "error");
+      }
+    })();
+  </script>
+</body>
+</html>
+
+
+
