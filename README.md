@@ -1,4 +1,4 @@
-# Router Stats SQLite
+# GPA-Monitor
 
 本地项目（Python 标准库 + SQLite）：
 - 多账号 `profile` 管理（新增/编辑/删除/切换 active）
@@ -10,7 +10,6 @@
 ## 1. 启动
 
 ```powershell
-cd E:\XXL\WorkSpace\AI\CPA\router-stats-sqlite
 python server.py
 ```
 
