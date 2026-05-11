@@ -1,4 +1,4 @@
-# GPA-Monitor
+# CPA-Monitor
 
 本地项目（Python 标准库 + SQLite）：
 - 多账号 `profile` 管理（新增/编辑/删除/切换 active）
@@ -68,3 +68,39 @@ http://127.0.0.1:8088
 
 - `usage-queue` 是出队语义，读取后可能消费记录。
 - `token` 仅保存在本地 SQLite；前端编辑 profile 时 `token` 留空表示“不改原 token”。
+
+## 6. Docker Compose 部署
+
+在项目根目录执行：
+
+```powershell
+docker compose up -d --build
+```
+
+查看状态与日志：
+
+```powershell
+docker compose ps
+docker compose logs -f
+```
+
+访问地址：
+
+```text
+http://127.0.0.1:18088
+```
+
+停止服务：
+
+```powershell
+docker compose down
+```
+
+说明：
+
+- SQLite 数据文件映射到宿主机 `./data/stats.db`，容器重建后仍会保留。
+- 关键配置来自 `docker-compose.yml`：
+  - `HOST=0.0.0.0`
+  - `PORT=8088`
+  - `DB_PATH=/app/data/stats.db`
+  - 端口映射 `18088:8088`
