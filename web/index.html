@@ -545,11 +545,9 @@
     <div class="card">
       <div class="grid">
         <div class="field sm"><label>统计窗口（小时）</label><input id="hours" type="number" min="1" max="2160" value="24" /></div>
-        <div class="field sm"><label>过滤关键词</label><input id="keyword" placeholder="provider/model/alias/source/auth/key" /></div>
+        <div class="field sm"><label>过滤关键词</label><input id="keyword" placeholder="渠道/模型/来源/用户" /></div>
         <div class="field sm"><label>趋势指标</label><select id="metric"><option value="requests">总请求</option><option value="tokens">总令牌</option><option value="success_rate">成功率(%)</option><option value="latency">平均耗时(ms)</option></select></div>
         <div class="field sm"><label>趋势点数</label><input id="trendLimit" type="number" min="10" max="5000" value="200" /></div>
-        <div class="field sm"><label>明细条数</label><input id="recordLimit" type="number" min="10" max="5000" value="300" /></div>
-        <div class="field sm"><label>前端自动刷新（已关闭，后台成功后自动刷新）</label><input id="uiRefreshSec" type="number" min="0" max="600" value="0" disabled /></div>
       </div>
       <div class="actions">
         <button id="refreshBtn" class="btn-ghost">立即拉取后端</button>
@@ -582,6 +580,32 @@
         <div class="chart-box">
           <div class="small" style="margin-bottom:6px;">Top模型请求量</div>
           <canvas id="modelBarCanvas"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="chart-grid">
+        <div class="chart-box">
+          <div class="small" style="margin-bottom:6px;">真实用户令牌占比</div>
+          <canvas id="userTokenPieCanvas"></canvas>
+        </div>
+        <div class="chart-box">
+          <div class="small" style="margin-bottom:6px;">真实用户令牌使用量</div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>真实用户</th>
+                  <th>请求</th>
+                  <th>总令牌</th>
+                  <th>占比</th>
+                  <th>失败</th>
+                </tr>
+              </thead>
+              <tbody id="userTokenTbody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -654,10 +678,8 @@
             <tr>
               <th data-key="provider">渠道</th>
               <th data-key="model">模型</th>
-              <th data-key="alias">别名</th>
               <th data-key="source">来源账号</th>
-              <th data-key="auth_account">授权账号</th>
-              <th data-key="external_key">对外Key</th>
+              <th data-key="user_name">真实用户</th>
               <th data-key="requests">请求</th>
               <th data-key="success">成功</th>
               <th data-key="failed">失败</th>
@@ -706,10 +728,8 @@
               <th data-rec-key="profile_name">配置档</th>
               <th data-rec-key="provider">渠道</th>
               <th data-rec-key="model">模型</th>
-              <th data-rec-key="alias">别名</th>
               <th data-rec-key="source">来源账号</th>
-              <th data-rec-key="auth_account">授权账号</th>
-              <th data-rec-key="external_key">对外Key</th>
+              <th data-rec-key="user_name">真实用户</th>
               <th data-rec-key="requests">请求</th>
               <th data-rec-key="success">成功</th>
               <th data-rec-key="failed">失败</th>
@@ -779,6 +799,7 @@
       nextRunAtSec: null,
       autoRefreshEnabled: false,
       refreshIntervalSec: 0,
+      recordLimit: 300,
       statsRows: [],
       statsSummary: {},
       recordRows: [],
@@ -794,8 +815,8 @@
       healthBars: [],
       recordLink: null,
       authQuotaRows: [],
+      userTokenRows: [],
       authQuotaUpdatedAt: null,
-      uiRefreshFollowBackend: true,
       lastSeenBackendSuccessAt: "",
       backendRefreshInFlight: false,
       uiTimer: null
@@ -904,9 +925,12 @@
 
     function redrawAfterThemeChange() {
       if (state.statsRows.length) {
+        state.userTokenRows = aggregateUserTokenRows(state.statsRows);
         renderStats(state.statsSummary || {});
         drawProviderPie(state.statsRows);
         drawModelTopBar(state.statsRows);
+        renderUserTokenStats();
+        drawUserTokenPie(state.userTokenRows);
         drawSourceResultMonitor();
       }
       if (state.trendPoints.length) {
@@ -939,15 +963,12 @@
         keyword: $("keyword").value,
         metric: $("metric").value,
         trendLimit: $("trendLimit").value,
-        recordLimit: $("recordLimit").value,
         statsPageSize: $("statsPageSize").value,
         recordsPageSize: $("recordsPageSize").value,
-        uiRefreshFollowBackend: state.uiRefreshFollowBackend ? 1 : 0,
         healthGranularity: $("healthGranularity").value,
         healthFailThreshold: $("healthFailThreshold").value,
         healthAlertsOnly: $("healthAlertsOnly").checked ? 1 : 0,
-        healthSource: state.healthSource,
-        uiRefreshSec: $("uiRefreshSec").value
+        healthSource: state.healthSource
       }));
     }
 
@@ -958,7 +979,6 @@
         if (v.keyword) $("keyword").value = v.keyword;
         if (v.metric) $("metric").value = v.metric;
         if (v.trendLimit) $("trendLimit").value = v.trendLimit;
-        if (v.recordLimit) $("recordLimit").value = v.recordLimit;
         if (v.statsPageSize) $("statsPageSize").value = v.statsPageSize;
         if (v.recordsPageSize) $("recordsPageSize").value = v.recordsPageSize;
         if (v.healthGranularity) {
@@ -976,8 +996,6 @@
           $("healthAlertsOnly").checked = state.healthAlertsOnly;
         }
         if (v.healthSource) state.healthSource = String(v.healthSource);
-        state.uiRefreshFollowBackend = true;
-        $("uiRefreshSec").value = "0";
       } catch (_) {}
     }
 
@@ -1084,7 +1102,7 @@
       const c = d.config_brief || {};
       state.autoRefreshEnabled = !!c.auto_refresh_enabled;
       state.refreshIntervalSec = num(c.refresh_interval_sec || 60);
-      if (state.uiRefreshFollowBackend) $("uiRefreshSec").value = "0";
+      state.recordLimit = Math.max(10, Math.min(5000, num(c.record_limit || 300)));
 
       const s = d.scheduler || {};
       state.nextRunAtSec = s.next_run_at || null;
@@ -1128,10 +1146,8 @@
         <tr>
           <td>${esc(r.provider)}</td>
           <td class="mono">${esc(r.model)}</td>
-          <td class="mono">${esc(r.alias)}</td>
           <td class="mono">${esc(r.source)}</td>
-          <td class="mono">${esc(r.auth_account || "-")}</td>
-          <td class="mono">${esc(r.external_key || "-")}</td>
+          <td>${esc(r.user_name || "-")}</td>
           <td>${compact(r.requests)}</td>
           <td class="good">${compact(r.success)}</td>
           <td class="bad">${compact(r.failed)}</td>
@@ -1176,10 +1192,8 @@
           <td class="mono">${esc(r.profile_name)}</td>
           <td>${esc(r.provider)}</td>
           <td class="mono">${esc(r.model)}</td>
-          <td class="mono">${esc(r.alias)}</td>
           <td class="mono">${esc(r.source)}</td>
-          <td class="mono">${esc(r.auth_account || "-")}</td>
-          <td class="mono">${esc(r.external_key || "-")}</td>
+          <td>${esc(r.user_name || "-")}</td>
           <td>${compact(r.requests || 0)}</td>
           <td class="good">${compact(r.success || 0)}</td>
           <td class="bad">${compact(r.failed || 0)}</td>
@@ -1227,6 +1241,44 @@
         if (r.external_key) cur.keySet.add(String(r.external_key));
       }
       return map;
+    }
+
+    function aggregateUserTokenRows(rows) {
+      const map = new Map();
+      for (const r of (rows || [])) {
+        const user = String(r.user_name || "-").trim() || "-";
+        if (!map.has(user)) {
+          map.set(user, { user, requests: 0, totalTokens: 0, success: 0, failed: 0 });
+        }
+        const cur = map.get(user);
+        cur.requests += Math.max(0, num(r.requests || 0));
+        cur.totalTokens += Math.max(0, num(r.total_tokens || 0));
+        cur.success += Math.max(0, num(r.success || 0));
+        cur.failed += Math.max(0, num(r.failed || 0));
+      }
+      const total = [...map.values()].reduce((s, x) => s + num(x.totalTokens), 0);
+      return [...map.values()]
+        .map((x) => ({ ...x, tokenShare: total > 0 ? x.totalTokens / total : 0 }))
+        .sort((a, b) => (num(b.totalTokens) - num(a.totalTokens)) || (num(b.requests) - num(a.requests)));
+    }
+
+    function renderUserTokenStats() {
+      const body = $("userTokenTbody");
+      if (!body) return;
+      const rows = state.userTokenRows || [];
+      if (!rows.length) {
+        body.innerHTML = `<tr><td colspan="5" class="small">暂无真实用户令牌数据</td></tr>`;
+        return;
+      }
+      body.innerHTML = rows.slice(0, 12).map((r) => `
+        <tr>
+          <td>${esc(r.user || "-")}</td>
+          <td>${compact(r.requests || 0)}</td>
+          <td><strong>${compact(r.totalTokens || 0)}</strong></td>
+          <td>${pct(r.tokenShare || 0)}</td>
+          <td class="bad">${compact(r.failed || 0)}</td>
+        </tr>
+      `).join("");
     }
 
     function renderAuthQuota() {
@@ -1464,6 +1516,61 @@
         ctx.fillText(`${name}  ${compact(it[1])} (${p}%)`, w * 0.62 + 16, y);
         y += 22;
       });
+    }
+
+    function drawTokenPie(canvasId, rows, nameKey) {
+      const { ctx, w, h } = setupCanvas(canvasId);
+      const items = [...rows].filter((x) => num(x.totalTokens) > 0).sort((a, b) => num(b.totalTokens) - num(a.totalTokens)).slice(0, 8);
+      const total = items.reduce((s, x) => s + num(x.totalTokens), 0);
+      if (!total) {
+        ctx.fillStyle = THEME.muted;
+        ctx.font = "13px Segoe UI";
+        ctx.fillText("暂无数据", 16, 26);
+        return;
+      }
+      const colors = THEME.palette;
+      const cx = w * 0.34, cy = h * 0.52, r = Math.min(w, h) * 0.28;
+      const lw = Math.max(18, Math.min(26, r * 0.35));
+      let start = -Math.PI / 2;
+      items.forEach((it, i) => {
+        const ang = (num(it.totalTokens) / total) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, start, start + ang);
+        ctx.strokeStyle = colors[i % colors.length];
+        ctx.lineWidth = lw;
+        ctx.lineCap = "round";
+        ctx.stroke();
+        start += ang;
+      });
+      ctx.beginPath();
+      ctx.arc(cx, cy, r - lw * 0.6, 0, Math.PI * 2);
+      ctx.fillStyle = THEME.panel;
+      ctx.fill();
+      ctx.fillStyle = THEME.text;
+      ctx.font = "12px Segoe UI";
+      ctx.textAlign = "center";
+      ctx.fillText("总令牌", cx, cy - 2);
+      ctx.font = "bold 16px Segoe UI";
+      ctx.fillText(compact(total), cx, cy + 20);
+      ctx.textAlign = "left";
+      ctx.font = "12px Segoe UI";
+      let y = 28;
+      items.forEach((it, i) => {
+        const p = ((num(it.totalTokens) / total) * 100).toFixed(1);
+        ctx.fillStyle = colors[i % colors.length];
+        roundRect(ctx, w * 0.62, y - 9, 10, 10, 2);
+        ctx.fill();
+        ctx.fillStyle = THEME.text;
+        const name = String(it[nameKey] || "-");
+        const short = name.length > 18 ? `${name.slice(0, 18)}...` : name;
+        ctx.fillText(`${short}  ${compact(it.totalTokens)} (${p}%)`, w * 0.62 + 16, y);
+        y += 22;
+      });
+      ctx.textAlign = "left";
+    }
+
+    function drawUserTokenPie(rows) {
+      drawTokenPie("userTokenPieCanvas", rows || [], "user");
     }
 
     function drawModelTopBar(rows) {
@@ -1861,12 +1968,15 @@
         .filter((x) => num(x.requests) > 0 || num(x.totalTokens) > 0)
         .sort((a, b) => (num(b.requests) - num(a.requests)) || (num(b.totalTokens) - num(a.totalTokens)));
       state.authQuotaRows = rows;
+      state.userTokenRows = aggregateUserTokenRows(state.statsRows);
       state.authQuotaUpdatedAt = new Date();
       renderAuthQuota();
+      renderUserTokenStats();
       refreshHealthSourceOptions();
       renderStats(d.data.summary || {});
       drawProviderPie(state.statsRows);
       drawModelTopBar(state.statsRows);
+      drawUserTokenPie(state.userTokenRows);
       drawSourceResultMonitor();
     }
 
@@ -1884,7 +1994,7 @@
       const h = num($("hours").value || 24);
       const kw = $("keyword").value.trim();
       const pid = state.activeProfileId || 0;
-      const limit = num($("recordLimit").value || 300);
+      const limit = Math.max(10, Math.min(5000, num(state.recordLimit || 300)));
       const d = await api(`/api/records?hours=${encodeURIComponent(h)}&keyword=${encodeURIComponent(kw)}&profile_id=${encodeURIComponent(pid)}&limit=${encodeURIComponent(limit)}`);
       state.recordRows = d.data || [];
       renderRecords();
@@ -1939,7 +2049,7 @@
       const rows = sortRows(state.statsRows, state.sortStats);
       if (!rows.length) { setStatus("暂无模型统计可导出。", "warn"); return; }
       const data = rows.map((r) => ({
-        渠道: r.provider, 模型: r.model, 别名: r.alias, 来源账号: r.source, 授权账号: r.auth_account || "-", 对外Key: r.external_key || "-",
+        渠道: r.provider, 模型: r.model, 来源账号: r.source, 真实用户: r.user_name || "-",
         请求: r.requests, 成功: r.success, 失败: r.failed, 成功率: `${(r.success_rate * 100).toFixed(2)}%`,
         输入令牌: r.input_tokens, 输出令牌: r.output_tokens, 推理令牌: r.reasoning_tokens, 总令牌: r.total_tokens,
         平均耗时ms: Math.round(r.avg_latency_ms || 0), 最小耗时ms: Math.round(r.min_latency_ms || 0), 最大耗时ms: Math.round(r.max_latency_ms || 0)
@@ -1961,7 +2071,25 @@
         })
         : (state.recordRows || []), state.sortRecords);
       if (!rows.length) { setStatus("暂无明细可导出。", "warn"); return; }
-      downloadCsv(`cpa-调用明细-${Date.now()}.csv`, toCsv(rows, Object.keys(rows[0])));
+      const data = rows.map((r) => ({
+        拉取时间CST: formatChinaDateTime(r.fetched_at),
+        配置档: r.profile_name || "-",
+        渠道: r.provider,
+        模型: r.model,
+        来源账号: r.source,
+        真实用户: r.user_name || "-",
+        请求: r.requests,
+        成功: r.success,
+        失败: r.failed,
+        输入令牌: r.input_tokens,
+        输出令牌: r.output_tokens,
+        推理令牌: r.reasoning_tokens,
+        总令牌: r.total_tokens,
+        平均耗时ms: Math.round(r.avg_latency_ms || 0),
+        最小耗时ms: Math.round(r.min_latency_ms || 0),
+        最大耗时ms: Math.round(r.max_latency_ms || 0)
+      }));
+      downloadCsv(`cpa-调用明细-${Date.now()}.csv`, toCsv(data, Object.keys(data[0])));
       setStatus("明细 CSV 已导出。");
     }
 
@@ -1976,11 +2104,6 @@
         state.recordsPage = 1;
         renderRecords();
       }
-    }
-
-    function applyUiAutoRefresh() {
-      if (state.uiTimer) clearInterval(state.uiTimer);
-      state.uiTimer = null;
     }
 
     document.querySelectorAll("th[data-key]").forEach((th) => {
@@ -2075,13 +2198,7 @@
     $("recordsPrevBtn").addEventListener("click", () => { state.recordsPage = Math.max(1, state.recordsPage - 1); renderRecords(); });
     $("recordsNextBtn").addEventListener("click", () => { state.recordsPage += 1; renderRecords(); });
 
-    ["hours", "keyword", "metric", "trendLimit", "recordLimit"].forEach((id) => $(id).addEventListener("change", saveView));
-    $("uiRefreshSec").addEventListener("change", () => {
-      state.uiRefreshFollowBackend = true;
-      $("uiRefreshSec").value = "0";
-      saveView();
-      applyUiAutoRefresh();
-    });
+    ["hours", "keyword", "metric", "trendLimit"].forEach((id) => $(id).addEventListener("change", saveView));
     $("metric").addEventListener("change", () => loadTrend().catch(() => {}));
     window.addEventListener("resize", () => {
       loadTrend().catch(() => {});
@@ -2116,7 +2233,6 @@
         })();
         applyTheme(mode);
         loadView();
-        applyUiAutoRefresh();
         await reloadData();
         setStatus("就绪。");
       } catch (e) {

@@ -80,16 +80,16 @@
     .field.sm { grid-column: span 3; }
     .field.md { grid-column: span 6; }
     .field label { display: block; margin-bottom: 6px; color: var(--muted); font-size: 12px; }
-    .field input, .field select {
+    .field input, .field select, .field textarea {
       width: 100%;
-      height: 38px;
       border: 1px solid var(--line-strong);
       border-radius: 8px;
-      padding: 0 10px;
       font-size: 14px;
       background: var(--input-bg);
       color: var(--input-text);
     }
+    .field input, .field select { height: 38px; padding: 0 10px; }
+    .field textarea { min-height: 116px; padding: 10px; resize: vertical; line-height: 1.5; }
     .field input::placeholder { color: var(--muted); }
     .actions { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; }
     button {
@@ -107,6 +107,9 @@
     .btn-ghost { background: var(--ghost-bg); color: var(--ghost-text); border: 1px solid var(--line); }
     .btn-danger { background: var(--danger-bg); color: var(--danger-text); border: 1px solid var(--line); }
     .btn-mini { height: 28px; padding: 0 10px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+    .key-map-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .key-map-table input { height: 32px; }
+    .key-map-table .saved-key { color: var(--muted); font-size: 12px; }
     .inline-input {
       width: 100%;
       height: 28px;
@@ -193,6 +196,24 @@
           <label>队列条数</label>
           <input id="queueCount" type="number" min="1" max="10000" value="300" />
         </div>
+        <div class="field">
+          <div class="key-map-head">
+            <label style="margin-bottom:0;">对外Key与真实使用用户配置（保密，已保存 Key 不回显）</label>
+            <button id="addKeyUserRowBtn" class="btn-ghost btn-mini" type="button">添加一行</button>
+          </div>
+          <div class="table-wrap">
+            <table class="key-map-table">
+              <thead>
+                <tr>
+                  <th>对外Key</th>
+                  <th>真实使用用户</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="keyUserTbody"></tbody>
+            </table>
+          </div>
+        </div>
       </div>
       <div class="actions">
         <button id="newProfileBtn" class="btn-ghost">新建草稿</button>
@@ -226,6 +247,7 @@
               <th>端点模式</th>
               <th>队列条数</th>
               <th>令牌状态</th>
+              <th>Key用户数</th>
               <th>更新时间</th>
               <th>操作</th>
             </tr>
@@ -240,6 +262,7 @@
         <div class="field sm"><label>自动刷新间隔（秒）</label><input id="intervalSec" type="number" min="5" value="60" /></div>
         <div class="field sm"><label>开启自动刷新</label><select id="autoEnabled"><option value="1">是</option><option value="0">否</option></select></div>
         <div class="field sm"><label>默认统计窗口（小时）</label><input id="hours" type="number" min="1" max="2160" value="24" /></div>
+        <div class="field sm"><label>默认明细条数</label><input id="recordLimit" type="number" min="10" max="5000" value="300" /></div>
         <div class="field sm"><label>保留天数（自动清理）</label><input id="retentionDays" type="number" min="1" max="3650" value="30" /></div>
       </div>
       <div class="actions">
@@ -254,7 +277,7 @@
   <script>
     const $ = (id) => document.getElementById(id);
     const THEME_KEY = "cpa_theme_mode_v1";
-    const state = { profiles: [], activeProfileId: 0, editingProfileId: 0, inlineEditId: 0 };
+    const state = { profiles: [], activeProfileId: 0, editingProfileId: 0, inlineEditId: 0, keyUserRows: [] };
     const num = (v) => Number.isFinite(Number(v)) ? Number(v) : 0;
     const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c]));
 
@@ -312,6 +335,61 @@
       $("endpointMode").value = profile.endpoint_mode || "auto";
       $("queueCount").value = profile.queue_count || 300;
       $("profileEnabled").value = profile.is_enabled ? "1" : "0";
+      state.keyUserRows = (profile.key_user_entries || []).map((x) => ({
+        kind: "saved",
+        id: x.id,
+        label: x.label || "已保存配置",
+        user_name: x.user_name || "",
+        deleted: false
+      }));
+      renderKeyUserRows();
+    }
+
+    function renderKeyUserRows() {
+      const rows = state.keyUserRows || [];
+      const visible = rows.filter((r) => !r.deleted);
+      if (!visible.length) {
+        $("keyUserTbody").innerHTML = `<tr><td colspan="3" class="small">暂无配置，点击“添加一行”新增</td></tr>`;
+        return;
+      }
+      $("keyUserTbody").innerHTML = visible.map((r, idx) => {
+        const realIdx = rows.indexOf(r);
+        if (r.kind === "saved") {
+          return `
+            <tr>
+              <td><span class="saved-key">${esc(r.label || "已保存配置")}</span></td>
+              <td>${esc(r.user_name || "-")}</td>
+              <td><button class="btn-danger btn-mini" type="button" data-key-act="delete" data-key-idx="${realIdx}">删除</button></td>
+            </tr>
+          `;
+        }
+        return `
+          <tr>
+            <td><input class="inline-input mono" data-key-field="external_key" data-key-idx="${realIdx}" type="password" placeholder="对外Key" value="${esc(r.external_key || "")}" /></td>
+            <td><input class="inline-input" data-key-field="user_name" data-key-idx="${realIdx}" placeholder="真实使用用户" value="${esc(r.user_name || "")}" /></td>
+            <td><button class="btn-danger btn-mini" type="button" data-key-act="delete" data-key-idx="${realIdx}">删除</button></td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    function syncKeyUserInput(idx, field, value) {
+      const row = state.keyUserRows[Number(idx)];
+      if (!row || row.kind !== "new") return;
+      row[field] = value;
+    }
+
+    function addKeyUserRow() {
+      state.keyUserRows.push({ kind: "new", external_key: "", user_name: "", deleted: false });
+      renderKeyUserRows();
+    }
+
+    function deleteKeyUserRow(idx) {
+      const row = state.keyUserRows[Number(idx)];
+      if (!row) return;
+      if (row.kind === "saved") row.deleted = true;
+      else state.keyUserRows.splice(Number(idx), 1);
+      renderKeyUserRows();
     }
 
     function renderProfilesTable() {
@@ -330,6 +408,7 @@
               <td>${esc(p.endpoint_mode)}</td>
               <td>${p.queue_count}</td>
               <td>${p.has_token ? "已配置" : "未配置"}</td>
+              <td>${p.key_user_count || 0}</td>
               <td class="mono">${esc(p.updated_at || "-")}</td>
               <td>
                 <button class="btn-ghost btn-mini" data-act="edit" data-id="${p.id}">编辑</button>
@@ -359,6 +438,7 @@
             </td>
             <td><input class="inline-input" data-inline="queue_count" data-id="${p.id}" type="number" min="1" max="10000" value="${p.queue_count}" /></td>
             <td>${p.has_token ? "已配置" : "未配置"}</td>
+            <td>${p.key_user_count || 0}</td>
             <td class="mono">${esc(p.updated_at || "-")}</td>
             <td>
               <button class="btn-primary btn-mini" data-act="save-inline" data-id="${p.id}">保存</button>
@@ -379,6 +459,7 @@
       $("intervalSec").value = cfg.refresh_interval_sec || 60;
       $("autoEnabled").value = cfg.auto_refresh_enabled ? "1" : "0";
       $("hours").value = cfg.lookback_hours || 24;
+      $("recordLimit").value = cfg.record_limit || 300;
       $("retentionDays").value = cfg.retention_days || 30;
       renderProfileOptions();
       fillProfileForm(activeProfile());
@@ -394,6 +475,7 @@
           refresh_interval_sec: num($("intervalSec").value || 60),
           auto_refresh_enabled: num($("autoEnabled").value || 0),
           lookback_hours: num($("hours").value || 24),
+          record_limit: num($("recordLimit").value || 300),
           retention_days: num($("retentionDays").value || 30)
         })
       });
@@ -411,6 +493,12 @@
         is_enabled: num($("profileEnabled").value || 1),
         set_active: true
       };
+      payload.key_user_additions = state.keyUserRows
+        .filter((r) => r.kind === "new" && !r.deleted && String(r.external_key || "").trim() && String(r.user_name || "").trim())
+        .map((r) => ({ external_key: String(r.external_key || "").trim(), user_name: String(r.user_name || "").trim() }));
+      payload.key_user_delete_ids = state.keyUserRows
+        .filter((r) => r.kind === "saved" && r.deleted && r.id)
+        .map((r) => r.id);
       const d = await api("/api/profiles/upsert", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -497,6 +585,8 @@
       $("endpointMode").value = "auto";
       $("queueCount").value = 300;
       $("profileEnabled").value = "1";
+      state.keyUserRows = [];
+      renderKeyUserRows();
       setStatus("已切到新建草稿。");
     }
 
@@ -518,6 +608,17 @@
     $("profileSelect").addEventListener("change", (e) => selectProfile(e.target.value).catch((er) => setStatus(`切换失败: ${er.message}`, "error")));
     $("profileFilter").addEventListener("input", renderProfilesTable);
     $("reloadProfilesBtn").addEventListener("click", () => loadAll().catch((e) => setStatus(`刷新列表失败: ${e.message}`, "error")));
+    $("addKeyUserRowBtn").addEventListener("click", addKeyUserRow);
+    $("keyUserTbody").addEventListener("input", (e) => {
+      const field = e.target.getAttribute("data-key-field");
+      if (!field) return;
+      syncKeyUserInput(e.target.getAttribute("data-key-idx"), field, e.target.value);
+    });
+    $("keyUserTbody").addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-key-act]");
+      if (!btn) return;
+      deleteKeyUserRow(btn.getAttribute("data-key-idx"));
+    });
     $("newProfileBtn").addEventListener("click", newDraft);
     $("saveProfileBtn").addEventListener("click", () => saveProfile().catch((e) => setStatus(`保存配置档失败: ${e.message}`, "error")));
     $("deleteProfileBtn").addEventListener("click", () => deleteProfile().catch((e) => setStatus(`删除配置档失败: ${e.message}`, "error")));

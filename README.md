@@ -1,5 +1,31 @@
 # CPA-Monitor
 
+## Git + Docker Compose 部署
+
+完整部署与更新说明见 [DEPLOY_DOCKER.md](DEPLOY_DOCKER.md)。
+
+快速部署：
+
+```bash
+git clone https://github.com/xkxdym/CPA-Monitor.git CPA-Monitor
+cd CPA-Monitor
+docker compose up -d --build
+```
+
+更新：
+
+```bash
+cd CPA-Monitor
+git pull
+docker compose up -d --build
+```
+
+访问地址：
+
+```text
+http://服务器IP:18088
+```
+
 本地项目（Python 标准库 + SQLite）：
 - 多账号 `profile` 管理（新增/编辑/删除/切换 active）
 - 手动拉取、后端定时拉取

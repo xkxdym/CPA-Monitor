@@ -1,4 +1,5 @@
 import json
+import hashlib
 import os
 import sqlite3
 import sys
@@ -57,6 +58,92 @@ def pick_text(*vals, default="-"):
     return default
 
 
+def normalize_key_user_map(value):
+    if isinstance(value, dict):
+        items = value.items()
+    else:
+        text = str(value or "").strip()
+        if not text:
+            return {}
+        try:
+            parsed = json.loads(text)
+            items = parsed.items() if isinstance(parsed, dict) else []
+        except Exception:
+            pairs = []
+            for line in text.splitlines():
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                sep = "=" if "=" in line else "," if "," in line else ":" if ":" in line else None
+                if sep:
+                    k, name = line.split(sep, 1)
+                    pairs.append((k, name))
+            items = pairs
+
+    out = {}
+    for k, name in items:
+        key = str(k or "").strip()
+        user = str(name or "").strip()
+        if key and user:
+            out[key] = user
+    return out
+
+
+def key_user_map_json(value):
+    return json.dumps(normalize_key_user_map(value), ensure_ascii=False, sort_keys=True)
+
+
+def key_user_entry_id(external_key):
+    return hashlib.sha256(str(external_key or "").encode("utf-8")).hexdigest()
+
+
+def redacted_key_user_entries(value):
+    entries = []
+    for idx, (key, user) in enumerate(normalize_key_user_map(value).items(), start=1):
+        entries.append({
+            "id": key_user_entry_id(key),
+            "label": f"已保存配置 #{idx}",
+            "user_name": user,
+        })
+    return entries
+
+
+def apply_key_user_changes(current_value, payload):
+    mapping = normalize_key_user_map(current_value)
+    delete_ids = set()
+    for v in payload.get("key_user_delete_ids", []) if isinstance(payload, dict) else []:
+        s = str(v or "").strip()
+        if s:
+            delete_ids.add(s)
+    if delete_ids:
+        mapping = {k: v for k, v in mapping.items() if key_user_entry_id(k) not in delete_ids}
+
+    additions = payload.get("key_user_additions", []) if isinstance(payload, dict) else []
+    if isinstance(additions, list):
+        for item in additions:
+            if not isinstance(item, dict):
+                continue
+            key = str(item.get("external_key") or "").strip()
+            user = str(item.get("user_name") or "").strip()
+            if key and user:
+                mapping[key] = user
+
+    return json.dumps(mapping, ensure_ascii=False, sort_keys=True)
+
+
+def user_name_for_key(profile, external_key):
+    mapping = normalize_key_user_map(profile.get("key_user_map_json", "")) if profile else {}
+    key = str(external_key or "").strip()
+    return mapping.get(key, "-") if key else "-"
+
+
+def row_matches_keyword(row, keyword, keys):
+    kw = str(keyword or "").strip().lower()
+    if not kw:
+        return True
+    return any(kw in str(row.get(k, "") or "").lower() for k in keys)
+
+
 def get_conn():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -86,6 +173,7 @@ def init_db():
               refresh_interval_sec INTEGER NOT NULL DEFAULT 60,
               auto_refresh_enabled INTEGER NOT NULL DEFAULT 0,
               lookback_hours INTEGER NOT NULL DEFAULT 24,
+              record_limit INTEGER NOT NULL DEFAULT 300,
               retention_days INTEGER NOT NULL DEFAULT 30
             );
             INSERT OR IGNORE INTO app_config (id) VALUES (1);
@@ -95,6 +183,7 @@ def init_db():
               name TEXT NOT NULL UNIQUE,
               base_url TEXT NOT NULL DEFAULT '',
               token TEXT NOT NULL DEFAULT '',
+              key_user_map_json TEXT NOT NULL DEFAULT '{}',
               endpoint_mode TEXT NOT NULL DEFAULT 'auto',
               queue_count INTEGER NOT NULL DEFAULT 300,
               is_enabled INTEGER NOT NULL DEFAULT 1,
@@ -163,12 +252,15 @@ def init_db():
         ensure_column(conn, "app_config", "refresh_interval_sec", "INTEGER NOT NULL DEFAULT 60")
         ensure_column(conn, "app_config", "auto_refresh_enabled", "INTEGER NOT NULL DEFAULT 0")
         ensure_column(conn, "app_config", "lookback_hours", "INTEGER NOT NULL DEFAULT 24")
+        ensure_column(conn, "app_config", "record_limit", "INTEGER NOT NULL DEFAULT 300")
+        ensure_column(conn, "profiles", "key_user_map_json", "TEXT NOT NULL DEFAULT '{}'")
         conn.execute(
             """
             UPDATE app_config SET
               refresh_interval_sec = COALESCE(refresh_interval_sec, 60),
               auto_refresh_enabled = COALESCE(auto_refresh_enabled, 0),
               lookback_hours = COALESCE(lookback_hours, 24),
+              record_limit = COALESCE(record_limit, 300),
               retention_days = COALESCE(retention_days, 30)
             WHERE id=1
             """
@@ -206,8 +298,8 @@ def init_db():
             now = now_iso()
             conn.execute(
                 """
-                INSERT INTO profiles (name, base_url, token, endpoint_mode, queue_count, is_enabled, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, 1, ?, ?)
+                INSERT INTO profiles (name, base_url, token, key_user_map_json, endpoint_mode, queue_count, is_enabled, created_at, updated_at)
+                VALUES (?, ?, ?, '{}', ?, ?, 1, ?, ?)
                 """,
                 ("default", base_url, token, endpoint_mode, queue_count, now, now),
             )
@@ -236,7 +328,7 @@ def read_config():
 def write_config(payload):
     cfg = read_config()
     merged = dict(cfg)
-    for k in ("active_profile_id", "refresh_interval_sec", "auto_refresh_enabled", "lookback_hours", "retention_days"):
+    for k in ("active_profile_id", "refresh_interval_sec", "auto_refresh_enabled", "lookback_hours", "record_limit", "retention_days"):
         if k in payload:
             merged[k] = payload[k]
 
@@ -244,6 +336,7 @@ def write_config(payload):
     merged["refresh_interval_sec"] = max(5, min(86400, to_int(merged.get("refresh_interval_sec", 60), 60)))
     merged["auto_refresh_enabled"] = 1 if to_int(merged.get("auto_refresh_enabled", 0), 0) else 0
     merged["lookback_hours"] = max(1, min(24 * 90, to_int(merged.get("lookback_hours", 24), 24)))
+    merged["record_limit"] = max(10, min(5000, to_int(merged.get("record_limit", 300), 300)))
     merged["retention_days"] = max(1, min(3650, to_int(merged.get("retention_days", 30), 30)))
 
     conn = get_conn()
@@ -255,6 +348,7 @@ def write_config(payload):
               refresh_interval_sec=?,
               auto_refresh_enabled=?,
               lookback_hours=?,
+              record_limit=?,
               retention_days=?
             WHERE id=1
             """,
@@ -263,6 +357,7 @@ def write_config(payload):
                 merged["refresh_interval_sec"],
                 merged["auto_refresh_enabled"],
                 merged["lookback_hours"],
+                merged["record_limit"],
                 merged["retention_days"],
             ),
         )
@@ -279,6 +374,7 @@ def sanitize_profile_payload(payload):
     p["base_url"] = str(p.get("base_url", "")).strip().rstrip("/")
     if "token" in p:
         p["token"] = str(p.get("token", "")).strip()
+    p["key_user_map_json"] = key_user_map_json(p.get("key_user_map_json", p.get("key_user_map", "")))
     mode = str(p.get("endpoint_mode", "auto")).strip().lower()
     p["endpoint_mode"] = mode if mode in ("auto", "queue", "legacy") else "auto"
     p["queue_count"] = max(1, min(10000, to_int(p.get("queue_count", 300), 300)))
@@ -291,13 +387,21 @@ def list_profiles():
     try:
         rows = conn.execute(
             """
-            SELECT id, name, base_url, endpoint_mode, queue_count, is_enabled, created_at, updated_at,
+            SELECT id, name, base_url, key_user_map_json, endpoint_mode, queue_count, is_enabled, created_at, updated_at,
                    CASE WHEN token <> '' THEN 1 ELSE 0 END AS has_token
             FROM profiles
             ORDER BY id ASC
             """
         ).fetchall()
-        return [dict(r) for r in rows]
+        out = []
+        for r in rows:
+            item = dict(r)
+            key_user_map = item.pop("key_user_map_json", "")
+            item["key_user_entries"] = redacted_key_user_entries(key_user_map)
+            item["key_user_count"] = len(item["key_user_entries"])
+            item["has_key_user_map"] = 1 if item["key_user_count"] > 0 else 0
+            out.append(item)
+        return out
     finally:
         conn.close()
 
@@ -307,7 +411,7 @@ def get_profile(profile_id):
     try:
         row = conn.execute(
             """
-            SELECT id, name, base_url, token, endpoint_mode, queue_count, is_enabled, created_at, updated_at
+            SELECT id, name, base_url, token, key_user_map_json, endpoint_mode, queue_count, is_enabled, created_at, updated_at
             FROM profiles WHERE id=?
             """,
             (profile_id,),
@@ -348,25 +452,34 @@ def upsert_profile(payload):
                 token_to_save = p["token"]
             elif payload.get("force_clear_token"):
                 token_to_save = ""
+            key_user_map_to_save = old["key_user_map_json"]
+            if (("key_user_map_json" in payload and str(payload.get("key_user_map_json") or "").strip()) or
+                    ("key_user_map" in payload and str(payload.get("key_user_map") or "").strip())):
+                key_user_map_to_save = p["key_user_map_json"]
+            if "key_user_additions" in payload or "key_user_delete_ids" in payload:
+                key_user_map_to_save = apply_key_user_changes(key_user_map_to_save, payload)
 
             conn.execute(
                 """
                 UPDATE profiles SET
-                  name=?, base_url=?, token=?, endpoint_mode=?, queue_count=?, is_enabled=?, updated_at=?
+                  name=?, base_url=?, token=?, key_user_map_json=?, endpoint_mode=?, queue_count=?, is_enabled=?, updated_at=?
                 WHERE id=?
                 """,
-                (p["name"], p["base_url"], token_to_save, p["endpoint_mode"], p["queue_count"], p["is_enabled"], now, pid),
+                (p["name"], p["base_url"], token_to_save, key_user_map_to_save, p["endpoint_mode"], p["queue_count"], p["is_enabled"], now, pid),
             )
             conn.commit()
             return pid
 
         token = p.get("token", "")
+        key_user_map = p["key_user_map_json"]
+        if "key_user_additions" in payload or "key_user_delete_ids" in payload:
+            key_user_map = apply_key_user_changes("{}", payload)
         conn.execute(
             """
-            INSERT INTO profiles (name, base_url, token, endpoint_mode, queue_count, is_enabled, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO profiles (name, base_url, token, key_user_map_json, endpoint_mode, queue_count, is_enabled, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (p["name"], p["base_url"], token, p["endpoint_mode"], p["queue_count"], p["is_enabled"], now, now),
+            (p["name"], p["base_url"], token, key_user_map, p["endpoint_mode"], p["queue_count"], p["is_enabled"], now, now),
         )
         new_id = conn.execute("SELECT last_insert_rowid() AS id").fetchone()["id"]
         conn.commit()
@@ -876,6 +989,7 @@ def query_stats(hours, keyword, profile_id):
     now = datetime.now(timezone.utc)
     since = now - timedelta(hours=hours)
     since_iso = since.isoformat(timespec="seconds")
+    profile = get_profile(profile_id) if profile_id else None
     conn = get_conn()
     try:
         where = "WHERE fetched_at >= ?"
@@ -883,11 +997,6 @@ def query_stats(hours, keyword, profile_id):
         if profile_id:
             where += " AND profile_id = ?"
             params.append(profile_id)
-        if keyword:
-            where += " AND (provider LIKE ? OR model LIKE ? OR alias LIKE ? OR source LIKE ? OR auth_account LIKE ? OR external_key LIKE ?)"
-            like = f"%{keyword}%"
-            params.extend([like, like, like, like, like, like])
-
         rows = conn.execute(
             f"""
             SELECT
@@ -911,33 +1020,75 @@ def query_stats(hours, keyword, profile_id):
             params,
         ).fetchall()
 
-        out = []
+        grouped = {}
         for r in rows:
             req = to_int(r["requests"], 0)
             succ = to_int(r["success"], 0)
             lat_weight = to_int(r["lat_weight"], 0)
             avg_latency = to_float(r["lat_sum"], 0.0) / lat_weight if lat_weight > 0 else 0.0
-            out.append(
-                {
-                    "provider": r["provider"],
-                    "model": r["model"],
-                    "alias": r["alias"],
-                    "source": r["source"],
-                    "auth_account": r["auth_account"],
-                    "external_key": r["external_key"],
-                    "requests": req,
-                    "success": succ,
-                    "failed": to_int(r["failed"], 0),
-                    "success_rate": (succ / req) if req else 0.0,
-                    "input_tokens": to_int(r["input_tokens"], 0),
-                    "output_tokens": to_int(r["output_tokens"], 0),
-                    "reasoning_tokens": to_int(r["reasoning_tokens"], 0),
-                    "total_tokens": to_int(r["total_tokens"], 0),
-                    "avg_latency_ms": avg_latency,
-                    "min_latency_ms": to_float(r["min_latency_ms"], 0.0),
-                    "max_latency_ms": to_float(r["max_latency_ms"], 0.0),
-                }
-            )
+            user_name = user_name_for_key(profile, r["external_key"])
+            item = {
+                "provider": r["provider"],
+                "model": r["model"],
+                "alias": r["alias"],
+                "source": r["source"],
+                "auth_account": r["auth_account"],
+                "external_key": r["external_key"],
+                "user_name": user_name,
+                "requests": req,
+                "success": succ,
+                "failed": to_int(r["failed"], 0),
+                "input_tokens": to_int(r["input_tokens"], 0),
+                "output_tokens": to_int(r["output_tokens"], 0),
+                "reasoning_tokens": to_int(r["reasoning_tokens"], 0),
+                "total_tokens": to_int(r["total_tokens"], 0),
+                "lat_sum": avg_latency * req if avg_latency > 0 else 0.0,
+                "lat_weight": req if avg_latency > 0 else 0,
+                "min_latency_ms": to_float(r["min_latency_ms"], 0.0),
+                "max_latency_ms": to_float(r["max_latency_ms"], 0.0),
+            }
+            if row_matches_keyword(item, keyword, ("provider", "model", "alias", "source", "auth_account", "external_key", "user_name")):
+                key = (item["provider"], item["model"], item["source"], item["user_name"])
+                if key not in grouped:
+                    grouped[key] = {
+                        "provider": item["provider"],
+                        "model": item["model"],
+                        "alias": item["alias"],
+                        "source": item["source"],
+                        "auth_account": item["auth_account"],
+                        "external_key": "",
+                        "user_name": item["user_name"],
+                        "requests": 0,
+                        "success": 0,
+                        "failed": 0,
+                        "input_tokens": 0,
+                        "output_tokens": 0,
+                        "reasoning_tokens": 0,
+                        "total_tokens": 0,
+                        "lat_sum": 0.0,
+                        "lat_weight": 0,
+                        "min_latency_ms": 0.0,
+                        "max_latency_ms": 0.0,
+                    }
+                g = grouped[key]
+                for k in ("requests", "success", "failed", "input_tokens", "output_tokens", "reasoning_tokens", "total_tokens", "lat_weight"):
+                    g[k] += item[k]
+                g["lat_sum"] += item["lat_sum"]
+                min_lat = to_float(item["min_latency_ms"], 0.0)
+                if min_lat > 0 and (g["min_latency_ms"] <= 0 or min_lat < g["min_latency_ms"]):
+                    g["min_latency_ms"] = min_lat
+                g["max_latency_ms"] = max(g["max_latency_ms"], to_float(item["max_latency_ms"], 0.0))
+
+        out = []
+        for g in grouped.values():
+            req = to_int(g["requests"], 0)
+            succ = to_int(g["success"], 0)
+            lat_weight = to_int(g.pop("lat_weight"), 0)
+            lat_sum = to_float(g.pop("lat_sum"), 0.0)
+            g["success_rate"] = (succ / req) if req else 0.0
+            g["avg_latency_ms"] = lat_sum / lat_weight if lat_weight > 0 else 0.0
+            out.append(g)
+        out.sort(key=lambda x: (x["total_tokens"], x["requests"]), reverse=True)
 
         summary = {
             "models": len(out),
@@ -1053,16 +1204,19 @@ def query_records(hours, profile_id, keyword, limit):
     since_iso = since.isoformat(timespec="seconds")
     conn = get_conn()
     try:
+        profiles = {}
+        if profile_id:
+            profile = get_profile(profile_id)
+            if profile:
+                profiles[profile_id] = profile
         where = "WHERE fetched_at >= ?"
         params = [since_iso]
         if profile_id:
             where += " AND profile_id = ?"
             params.append(profile_id)
-        if keyword:
-            where += " AND (provider LIKE ? OR model LIKE ? OR alias LIKE ? OR source LIKE ? OR auth_account LIKE ? OR external_key LIKE ? OR profile_name LIKE ?)"
-            like = f"%{keyword}%"
-            params.extend([like, like, like, like, like, like, like])
-        params.append(limit)
+        limit_sql = "" if keyword else "LIMIT ?"
+        if not keyword:
+            params.append(limit)
 
         rows = conn.execute(
             f"""
@@ -1075,11 +1229,24 @@ def query_records(hours, profile_id, keyword, limit):
             FROM usage_records
             {where}
             ORDER BY fetched_at DESC, id DESC
-            LIMIT ?
+            {limit_sql}
             """,
             params,
         ).fetchall()
-        return [dict(r) for r in rows]
+        out = []
+        for r in rows:
+            item = dict(r)
+            pid = to_int(item.get("profile_id"), 0)
+            if pid not in profiles:
+                profile = get_profile(pid) if pid else None
+                if profile:
+                    profiles[pid] = profile
+            item["user_name"] = user_name_for_key(profiles.get(pid), item.get("external_key"))
+            if row_matches_keyword(item, keyword, ("profile_name", "provider", "model", "alias", "source", "auth_account", "external_key", "user_name")):
+                out.append(item)
+                if keyword and len(out) >= limit:
+                    break
+        return out
     finally:
         conn.close()
 
@@ -1173,6 +1340,7 @@ class Handler(BaseHTTPRequestHandler):
                         "refresh_interval_sec": cfg.get("refresh_interval_sec", 60),
                         "auto_refresh_enabled": bool(cfg.get("auto_refresh_enabled", 0)),
                         "lookback_hours": cfg.get("lookback_hours", 24),
+                        "record_limit": cfg.get("record_limit", 300),
                         "retention_days": cfg.get("retention_days", 30),
                     },
                 },
@@ -1218,7 +1386,7 @@ class Handler(BaseHTTPRequestHandler):
             hours = max(1, min(24 * 90, to_int((q.get("hours") or [str(cfg.get("lookback_hours", 24))])[0], 24)))
             profile_id = to_int((q.get("profile_id") or [str(cfg.get("active_profile_id") or 0)])[0], 0)
             keyword = (q.get("keyword") or [""])[0].strip()
-            limit = max(10, min(5000, to_int((q.get("limit") or ["300"])[0], 300)))
+            limit = max(10, min(5000, to_int((q.get("limit") or [str(cfg.get("record_limit", 300))])[0], 300)))
             self._json(200, {"ok": True, "data": query_records(hours, profile_id, keyword, limit)})
             return
 
